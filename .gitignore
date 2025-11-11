@@ -1,0 +1,24 @@
+# 环境变量文件（包含敏感信息）
+.env
+.env.*
+!.env.example
+
+# SQLite数据库文件
+/data/*.sqlite
+/data/*.db
+
+# 日志和缓存文件
+*.log
+*.cache
+
+# 临时文件
+*.tmp
+*.bak
+*.swp
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+#忽略编辑器文件
+.idea/*

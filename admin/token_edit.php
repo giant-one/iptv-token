@@ -150,7 +150,7 @@ require_once '../templates/header.php';
     <p>创建时间: <?php echo format_timestamp($token_data['created_at']); ?></p>
     <p>最后更新: <?php echo format_timestamp($token_data['updated_at']); ?></p>
     <p>访问链接: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/../live.php?token=<?php echo urlencode($token_data['token']); ?>&c=YOUR_CHANNEL_URL</code></p>
-    <a href="#" class="btn btn-sm copy-link" data-link="<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/../live.php?token=<?php echo urlencode($token_data['token']); ?>&c=">复制链接</a>
+    <a href="#" class="btn btn-sm copy-link" data-link="<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=<?php echo urlencode($token_data['token']); ?>&c=">复制链接</a>
     <a href="logs.php?token=<?php echo urlencode($token_data['token']); ?>" class="btn btn-sm">查看访问日志</a>
 </div>
 

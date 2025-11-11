@@ -50,9 +50,9 @@ try {
     $updateStmt->bindValue(':token', $token);
     $updateStmt->execute();
 
-    // 模拟直播流代理
-    header('Content-Type: application/vnd.apple.mpegurl');
-    echo "#EXTM3U\n#EXTINF:10, Sample Stream\nhttps://example.com/stream.m3u8";
+    // 验证通过后重定向到实际的播放列表
+    header('Location: ' . REDIRECT_URL, true, 302);
+    exit;
 } catch (PDOException $e) {
     http_response_code(500);
     echo 'DB Error';

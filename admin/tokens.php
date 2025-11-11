@@ -58,7 +58,7 @@ require_once '../templates/header.php';
                 <a href="token_edit.php?id=<?php echo $token['id']; ?>" class="btn btn-primary btn-sm">编辑</a>
                 <a href="token_delete.php?id=<?php echo $token['id']; ?>" class="btn btn-danger btn-sm confirm-delete">删除</a>
                 <a href="logs.php?token=<?php echo urlencode($token['token']); ?>" class="btn btn-sm">查看日志</a>
-                <a href="#" class="btn btn-sm copy-link" data-link="<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/../live.php?token=<?php echo urlencode($token['token']); ?>&c=">复制链接</a>
+                <a href="#" class="btn btn-sm copy-link" data-link="<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=<?php echo urlencode($token['token']); ?>&c=">复制链接</a>
             </td>
         </tr>
         <?php endforeach; ?>
