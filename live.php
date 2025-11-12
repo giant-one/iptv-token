@@ -1,6 +1,25 @@
 <?php
 require_once 'config.php';
 
+// 检查是否是浏览器直接访问
+$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+$browserSignatures = ['Mozilla', 'Chrome', 'Safari', 'Firefox', 'Edge', 'Opera'];
+$isBrowser = false;
+
+foreach ($browserSignatures as $signature) {
+    if (stripos($userAgent, $signature) !== false) {
+        $isBrowser = true;
+        break;
+    }
+}
+
+// 如果是浏览器直接访问，返回错误信息
+if ($isBrowser) {
+    http_response_code(403);
+    echo '错误：不允许浏览器直接访问此链接，请使用支持的播放器或应用程序。';
+    exit;
+}
+
 $token = $_GET['token'] ?? '';
 $channel = $_GET['c'] ?? '';
 

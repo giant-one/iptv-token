@@ -13,7 +13,7 @@ RUN apk update && apk add --no-cache \
     && docker-php-ext-enable pdo_mysql pdo_sqlite
 
 # 配置Nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/http.d/default.conf
 
 # 设置工作目录
 WORKDIR /var/www/html

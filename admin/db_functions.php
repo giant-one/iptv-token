@@ -82,8 +82,8 @@ function generate_unique_token($length = 32) {
 function create_token($data) {
     $db = get_db_connection();
     
-    $sql = 'INSERT INTO tokens (token, expire_at, max_usage, usage_count, note, created_at, updated_at) 
-            VALUES (:token, :expire_at, :max_usage, :usage_count, :note, :created_at, :updated_at)';
+    $sql = 'INSERT INTO tokens (token, expire_at, max_usage, usage_count, note, channel, created_at, updated_at) 
+            VALUES (:token, :expire_at, :max_usage, :usage_count, :note, :channel, :created_at, :updated_at)';
             
     $stmt = $db->prepare($sql);
     $now = time();
@@ -93,6 +93,7 @@ function create_token($data) {
     $stmt->bindValue(':max_usage', $data['max_usage'] ?: 0, PDO::PARAM_INT);
     $stmt->bindValue(':usage_count', 0, PDO::PARAM_INT);
     $stmt->bindValue(':note', $data['note']);
+    $stmt->bindValue(':channel', $data['channel'] ?? null);
     $stmt->bindValue(':created_at', $now, PDO::PARAM_INT);
     $stmt->bindValue(':updated_at', $now, PDO::PARAM_INT);
     
@@ -108,6 +109,7 @@ function update_token($id, $data) {
             expire_at = :expire_at, 
             max_usage = :max_usage, 
             note = :note, 
+            channel = :channel, 
             updated_at = :updated_at 
             WHERE id = :id';
             
@@ -117,6 +119,7 @@ function update_token($id, $data) {
     $stmt->bindValue(':expire_at', $data['expire_at'] ?: 0, PDO::PARAM_INT);
     $stmt->bindValue(':max_usage', $data['max_usage'] ?: 0, PDO::PARAM_INT);
     $stmt->bindValue(':note', $data['note']);
+    $stmt->bindValue(':channel', $data['channel'] ?? null);
     $stmt->bindValue(':updated_at', time(), PDO::PARAM_INT);
     $stmt->bindValue(':id', $id, PDO::PARAM_INT);
     

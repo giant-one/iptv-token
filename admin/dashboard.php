@@ -57,7 +57,7 @@ require_once '../templates/header.php';
 
 <div class="usage-guide">
     <h3>使用说明</h3>
-    <p>访问链接格式: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/../live.php?token=YOUR_TOKEN&c=CHANNEL_URL</code></p>
+    <p>访问链接格式: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=YOUR_TOKEN&c=CHANNEL_URL</code></p>
     <ul>
         <li><strong>token</strong>: 在 Token 管理页面创建的令牌</li>
         <li><strong>c</strong>: 需要访问的原始直播源 URL（将作为参数传递）</li>

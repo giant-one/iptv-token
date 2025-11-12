@@ -58,7 +58,7 @@ require_once '../templates/header.php';
                 <a href="token_edit.php?id=<?php echo $token['id']; ?>" class="btn btn-primary btn-sm">编辑</a>
                 <a href="token_delete.php?id=<?php echo $token['id']; ?>" class="btn btn-danger btn-sm confirm-delete">删除</a>
                 <a href="logs.php?token=<?php echo urlencode($token['token']); ?>" class="btn btn-sm">查看日志</a>
-                <a href="#" class="btn btn-sm copy-link" data-link="<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=<?php echo urlencode($token['token']); ?>&c=">复制链接</a>
+                <a href="#" class="btn btn-sm copy-link" data-link="<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=<?php echo urlencode($token['token']); ?>&c=<?php echo urlencode($token['channel'] ?? ''); ?>">复制链接</a>
             </td>
         </tr>
         <?php endforeach; ?>
@@ -78,9 +78,10 @@ echo generate_pagination($total_tokens, $per_page, $page, 'tokens.php?page=%d');
 
 <div class="usage-guide">
     <h3>使用说明</h3>
-    <p>1. Token 访问链接: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/../live.php?token=YOUR_TOKEN&c=CHANNEL_URL</code></p>
+    <p>1. Token 访问链接: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=YOUR_TOKEN&c=CHANNEL</code></p>
     <p>2. 过期时间为空表示永不过期，限制次数为0表示无限制</p>
-    <p>3. 点击"复制链接"可以获取基础URL，只需在后面添加直播源URL即可使用</p>
+    <p>3. 参数 c 表示渠道信息（如"咸鱼"、"小红书"等），用于标识用户来源</p>
+    <p>4. 点击"复制链接"可以获取带有渠道信息的完整URL</p>
 </div>
 
 <?php require_once '../templates/footer.php'; ?>

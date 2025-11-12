@@ -30,19 +30,22 @@ if (!$token_data) {
     exit;
 }
 
-// 处理表单提交
+    // 处理表单提交
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['token'] ?? '';
     $expire_date = $_POST['expire_date'] ?? '';
     $expire_time = $_POST['expire_time'] ?? '';
     $max_usage = isset($_POST['max_usage']) ? (int)$_POST['max_usage'] : 0;
     $note = $_POST['note'] ?? '';
+    $channel = $_POST['channel'] ?? '';
     
     // 验证数据
     if (empty($token)) {
         $error = 'Token 不能为空';
     } elseif ($token !== $token_data['token'] && token_exists($token)) {
         $error = 'Token 已存在，请使用其他值';
+    } elseif (empty($channel)) {
+        $error = '渠道信息不能为空';
     }
     
     if (empty($error)) {
@@ -58,7 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'token' => $token,
             'expire_at' => $expire_at,
             'max_usage' => $max_usage,
-            'note' => $note
+            'note' => $note,
+            'channel' => $channel
         ];
         
         if (update_token($id, $data)) {
@@ -134,6 +138,12 @@ require_once '../templates/header.php';
     </div>
     
     <div class="form-group">
+        <label for="channel">渠道信息</label>
+        <input type="text" class="form-control" id="channel" name="channel" value="<?php echo htmlspecialchars($token_data['channel'] ?? ''); ?>" placeholder="如：咸鱼、小红书等" required>
+        <small>表示用户来源的渠道，复制链接时将自动带上此参数</small>
+    </div>
+    
+    <div class="form-group">
         <label for="note">备注（可选）</label>
         <textarea class="form-control" id="note" name="note" rows="3"><?php echo htmlspecialchars($token_data['note']); ?></textarea>
     </div>
@@ -149,8 +159,8 @@ require_once '../templates/header.php';
     <p>Token: <code><?php echo htmlspecialchars($token_data['token']); ?></code></p>
     <p>创建时间: <?php echo format_timestamp($token_data['created_at']); ?></p>
     <p>最后更新: <?php echo format_timestamp($token_data['updated_at']); ?></p>
-    <p>访问链接: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/../live.php?token=<?php echo urlencode($token_data['token']); ?>&c=YOUR_CHANNEL_URL</code></p>
-    <a href="#" class="btn btn-sm copy-link" data-link="<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=<?php echo urlencode($token_data['token']); ?>&c=">复制链接</a>
+    <p>访问链接: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=<?php echo urlencode($token_data['token']); ?>&c=<?php echo urlencode($token_data['channel'] ?? ''); ?></code></p>
+    <a href="#" class="btn btn-sm copy-link" data-link="<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=<?php echo urlencode($token_data['token']); ?>&c=<?php echo urlencode($token_data['channel'] ?? ''); ?>">复制链接</a>
     <a href="logs.php?token=<?php echo urlencode($token_data['token']); ?>" class="btn btn-sm">查看访问日志</a>
 </div>
 

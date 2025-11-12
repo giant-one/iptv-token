@@ -24,6 +24,7 @@ try {
                 max_usage INTEGER DEFAULT 0,
                 usage_count INTEGER DEFAULT 0,
                 note TEXT,
+                channel TEXT,
                 created_at INTEGER,
                 updated_at INTEGER
             );
@@ -47,6 +48,7 @@ try {
                 max_usage INT DEFAULT 0,
                 usage_count INT DEFAULT 0,
                 note TEXT,
+                channel VARCHAR(255) DEFAULT NULL,
                 created_at BIGINT,
                 updated_at BIGINT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

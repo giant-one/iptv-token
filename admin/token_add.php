@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $expire_time = $_POST['expire_time'] ?? '';
     $max_usage = isset($_POST['max_usage']) ? (int)$_POST['max_usage'] : 0;
     $note = $_POST['note'] ?? '';
+    $channel = $_POST['channel'] ?? '';
     
     // 验证数据
     if (empty($token) && !isset($_POST['auto_generate'])) {
@@ -28,6 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $token = generate_unique_token();
     } elseif (token_exists($token)) {
         $error = 'Token 已存在，请使用其他值';
+    } elseif (empty($channel)) {
+        $error = '渠道信息不能为空';
     }
     
     if (empty($error)) {
@@ -43,7 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'token' => $token,
             'expire_at' => $expire_at,
             'max_usage' => $max_usage,
-            'note' => $note
+            'note' => $note,
+            'channel' => $channel
         ];
         
         if (create_token($data)) {
@@ -116,6 +120,12 @@ require_once '../templates/header.php';
     <div class="form-group">
         <label for="max_usage">最大使用次数（0表示无限制）</label>
         <input type="number" class="form-control" id="max_usage" name="max_usage" min="0" value="<?php echo isset($_POST['max_usage']) ? (int)$_POST['max_usage'] : 0; ?>">
+    </div>
+    
+    <div class="form-group">
+        <label for="channel">渠道信息</label>
+        <input type="text" class="form-control" id="channel" name="channel" value="<?php echo isset($_POST['channel']) ? htmlspecialchars($_POST['channel']) : ''; ?>" placeholder="如：咸鱼、小红书等" required>
+        <small>表示用户来源的渠道，复制链接时将自动带上此参数</small>
     </div>
     
     <div class="form-group">
