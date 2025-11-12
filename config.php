@@ -18,4 +18,7 @@ define('ADMIN_PASS', getenv('ADMIN_PASS') ?: 'password');
 
 // 直播流重定向 URL
 define('REDIRECT_URL', getenv('REDIRECT_URL') ?: 'http://example.com/playlist.m3u');
+
+// 过期或无效令牌重定向 URL
+define('EXPIRED_REDIRECT_URL', getenv('EXPIRED_REDIRECT_URL') ?: 'http://example.com/expired.m3u');
 ?>

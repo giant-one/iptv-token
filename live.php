@@ -40,20 +40,20 @@ try {
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$row) {
-        http_response_code(403);
-        echo 'Invalid token';
+        // 无效令牌，重定向到过期链接
+        header('Location: ' . EXPIRED_REDIRECT_URL, true, 302);
         exit;
     }
 
     if ($row['expire_at'] && $row['expire_at'] < time()) {
-        http_response_code(403);
-        echo 'Token expired';
+        // 令牌已过期，重定向到过期链接
+        header('Location: ' . EXPIRED_REDIRECT_URL, true, 302);
         exit;
     }
 
     if ($row['max_usage'] > 0 && $row['usage_count'] >= $row['max_usage']) {
-        http_response_code(403);
-        echo 'Usage limit reached';
+        // 使用次数已达上限，重定向到过期链接
+        header('Location: ' . EXPIRED_REDIRECT_URL, true, 302);
         exit;
     }
 
@@ -73,7 +73,8 @@ try {
     header('Location: ' . REDIRECT_URL, true, 302);
     exit;
 } catch (PDOException $e) {
-    http_response_code(500);
-    echo 'DB Error';
+    // 数据库错误，也重定向到过期链接
+    header('Location: ' . EXPIRED_REDIRECT_URL, true, 302);
+    exit;
 }
 ?>
