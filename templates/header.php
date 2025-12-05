@@ -29,6 +29,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <ul>
                 <li><a href="dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>">首页</a></li>
                 <li><a href="tokens.php" class="<?php echo $current_page == 'tokens.php' ? 'active' : ''; ?>">Token 管理</a></li>
+                <li><a href="playlists.php" class="<?php echo $current_page == 'playlists.php' ? 'active' : ''; ?>">播放列表</a></li>
                 <li><a href="logs.php" class="<?php echo $current_page == 'logs.php' ? 'active' : ''; ?>">访问日志</a></li>
                 <li><a href="logout.php">退出登录</a></li>
             </ul>

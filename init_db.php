@@ -39,6 +39,16 @@ try {
                 access_time INTEGER
             );
         ";
+
+        $sqlPlaylists = "
+            CREATE TABLE IF NOT EXISTS playlists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                name_en TEXT NOT NULL,
+                created_at INTEGER,
+                updated_at INTEGER
+            );
+        ";
     } else {
         $sqlTokens = "
             CREATE TABLE IF NOT EXISTS tokens (
@@ -63,10 +73,21 @@ try {
                 access_time BIGINT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ";
+
+        $sqlPlaylists = "
+            CREATE TABLE IF NOT EXISTS playlists (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                name_en VARCHAR(255) NOT NULL,
+                created_at BIGINT,
+                updated_at BIGINT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ";
     }
 
     $db->exec($sqlTokens);
     $db->exec($sqlLogs);
+    $db->exec($sqlPlaylists);
 
     echo "Database initialized successfully!\n";
 } catch (PDOException $e) {

@@ -225,3 +225,90 @@ function generate_pagination($total_items, $items_per_page, $current_page, $url_
     $pagination .= '</ul>';
     return $pagination;
 }
+
+// 播放列表相关函数
+
+// 获取所有播放列表
+function get_all_playlists($limit = null, $offset = null) {
+    $db = get_db_connection();
+    
+    $sql = 'SELECT * FROM playlists ORDER BY created_at DESC';
+    $params = [];
+    
+    if ($limit !== null && $offset !== null) {
+        $sql .= ' LIMIT :offset, :limit';
+        $params[':limit'] = $limit;
+        $params[':offset'] = $offset;
+    }
+    
+    $stmt = $db->prepare($sql);
+    
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value, PDO::PARAM_INT);
+    }
+    
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// 获取播放列表总数
+function get_playlists_count() {
+    $db = get_db_connection();
+    $stmt = $db->query('SELECT COUNT(*) FROM playlists');
+    return $stmt->fetchColumn();
+}
+
+// 根据ID获取播放列表
+function get_playlist_by_id($id) {
+    $db = get_db_connection();
+    $stmt = $db->prepare('SELECT * FROM playlists WHERE id = :id');
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// 创建新播放列表
+function create_playlist($data) {
+    $db = get_db_connection();
+    
+    $sql = 'INSERT INTO playlists (name, name_en, created_at, updated_at) 
+            VALUES (:name, :name_en, :created_at, :updated_at)';
+            
+    $stmt = $db->prepare($sql);
+    $now = time();
+    
+    $stmt->bindValue(':name', $data['name']);
+    $stmt->bindValue(':name_en', $data['name_en']);
+    $stmt->bindValue(':created_at', $now, PDO::PARAM_INT);
+    $stmt->bindValue(':updated_at', $now, PDO::PARAM_INT);
+    
+    return $stmt->execute();
+}
+
+// 更新播放列表
+function update_playlist($id, $data) {
+    $db = get_db_connection();
+    
+    $sql = 'UPDATE playlists SET 
+            name = :name, 
+            name_en = :name_en, 
+            updated_at = :updated_at 
+            WHERE id = :id';
+            
+    $stmt = $db->prepare($sql);
+    
+    $stmt->bindValue(':name', $data['name']);
+    $stmt->bindValue(':name_en', $data['name_en']);
+    $stmt->bindValue(':updated_at', time(), PDO::PARAM_INT);
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+    
+    return $stmt->execute();
+}
+
+// 删除播放列表
+function delete_playlist($id) {
+    $db = get_db_connection();
+    $stmt = $db->prepare('DELETE FROM playlists WHERE id = :id');
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+    return $stmt->execute();
+}

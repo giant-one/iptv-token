@@ -22,6 +22,7 @@ if ($isBrowser) {
 
 $token = $_GET['token'] ?? '';
 $channel = $_GET['c'] ?? '';
+$pathType = $_GET['t'] ?? '';
 
 if (!$token || !$channel) {
     http_response_code(400);
@@ -70,7 +71,13 @@ try {
     $updateStmt->execute();
 
     // 验证通过后重定向到实际的播放列表
-    header('Location: ' . REDIRECT_URL, true, 302);
+    // 构建重定向URL: 域名/{t}/playlist.m3u
+    if ($pathType) {
+        $redirectUrl = rtrim(REDIRECT_URL, '/') . '/' . $pathType . '/playlist.m3u';
+    } else {
+        $redirectUrl = rtrim(REDIRECT_URL, '/') . '/live/playlist.m3u';
+    }
+    header('Location: ' . $redirectUrl, true, 302);
     exit;
 } catch (PDOException $e) {
     // 数据库错误，也重定向到过期链接
