@@ -282,7 +282,7 @@ function copyAllLinks() {
     // 使用说明
     let explanation = "💡 为什么提供多个链接？\n";
     explanation += "━".repeat(25) + "\n";
-    explanation += "🚀 性能优化：总频道数超过1万+，单一链接加载会很慢\n";
+    explanation += "🚀 性能优化：总频道数超过8000+，单一链接加载会很慢\n";
     explanation += "🎯 按需订阅：不同播放列表包含不同类型的频道内容\n";
     explanation += "⚡ 灵活选择：用户可根据需要选择特定的播放列表\n";
     explanation += "🔄 稳定流畅：分散加载，提升观看体验\n";
