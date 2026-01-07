@@ -103,11 +103,12 @@ try {
     }
 
     // 记录日志和计数
-    $insertStmt = $db->prepare('INSERT INTO logs(token, ip, channel, access_time) VALUES (:token, :ip, :channel, :access_time)');
+    $insertStmt = $db->prepare('INSERT INTO logs(token, ip, channel, access_time, user_agent) VALUES (:token, :ip, :channel, :access_time, :user_agent)');
     $insertStmt->bindValue(':token', $token);
     $insertStmt->bindValue(':ip', $_SERVER['REMOTE_ADDR']);
     $insertStmt->bindValue(':channel', $channel);
     $insertStmt->bindValue(':access_time', time(), PDO::PARAM_INT);
+    $insertStmt->bindValue(':user_agent', $_SERVER['HTTP_USER_AGENT'] ?? null);
     $insertStmt->execute();
     
     $updateStmt = $db->prepare('UPDATE tokens SET usage_count = usage_count + 1 WHERE token = :token');

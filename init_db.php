@@ -70,7 +70,8 @@ try {
                 token VARCHAR(255),
                 ip VARCHAR(64),
                 channel VARCHAR(255),
-                access_time BIGINT
+                access_time BIGINT,
+                user_agent varchar(255)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ";
 

@@ -46,6 +46,7 @@ require_once '../templates/header.php';
             <th>Token</th>
             <th>IP</th>
             <th>频道/直播源</th>
+            <th>User-Agent</th>
             <th>访问时间</th>
             <th>操作</th>
         </tr>
@@ -63,6 +64,7 @@ require_once '../templates/header.php';
             </td>
             <td><?php echo htmlspecialchars($log['ip']); ?></td>
             <td><?php echo htmlspecialchars($log['channel']); ?></td>
+            <td title="<?php echo htmlspecialchars($log['user_agent'] ?? ''); ?>"><?php echo htmlspecialchars(substr($log['user_agent'] ?? 'N/A', 0, 50)) . (strlen($log['user_agent'] ?? '') > 50 ? '...' : ''); ?></td>
             <td><?php echo format_timestamp($log['access_time']); ?></td>
             <td>
                 <?php if (!$filter_token): ?>

@@ -22,11 +22,60 @@ function get_db_connection() {
 }
 
 // 获取所有Token
-function get_all_tokens($limit = null, $offset = null) {
+function get_all_tokens($limit = null, $offset = null, $search = null, $expire_filter = null) {
     $db = get_db_connection();
     
-    $sql = 'SELECT * FROM tokens ORDER BY created_at DESC';
+    $sql = 'SELECT * FROM tokens';
+    $where_conditions = [];
     $params = [];
+    
+    // 搜索条件
+    if (!empty($search)) {
+        $where_conditions[] = 'token LIKE :search';
+        $params[':search'] = '%' . $search . '%';
+    }
+    
+    // 到期时间筛选
+    if (!empty($expire_filter)) {
+        $now = time();
+        switch ($expire_filter) {
+            case 'expired':
+                $where_conditions[] = 'expire_at > 0 AND expire_at < :now';
+                $params[':now'] = $now;
+                break;
+            case '3':
+                $where_conditions[] = 'expire_at > :now AND expire_at <= :expire_time';
+                $params[':now'] = $now;
+                $params[':expire_time'] = $now + (3 * 24 * 3600);
+                break;
+            case '7':
+                $where_conditions[] = 'expire_at > :now AND expire_at <= :expire_time';
+                $params[':now'] = $now;
+                $params[':expire_time'] = $now + (7 * 24 * 3600);
+                break;
+            case '15':
+                $where_conditions[] = 'expire_at > :now AND expire_at <= :expire_time';
+                $params[':now'] = $now;
+                $params[':expire_time'] = $now + (15 * 24 * 3600);
+                break;
+            case '30':
+                $where_conditions[] = 'expire_at > :now AND expire_at <= :expire_time';
+                $params[':now'] = $now;
+                $params[':expire_time'] = $now + (30 * 24 * 3600);
+                break;
+            case '365':
+                $where_conditions[] = 'expire_at > :now AND expire_at <= :expire_time';
+                $params[':now'] = $now;
+                $params[':expire_time'] = $now + (365 * 24 * 3600);
+                break;
+        }
+    }
+    
+    if (!empty($where_conditions)) {
+        $sql .= ' WHERE ' . implode(' AND ', $where_conditions);
+    }
+    
+    $sql .= ' ORDER BY created_at DESC';
     
     if ($limit !== null && $offset !== null) {
         $sql .= ' LIMIT :offset, :limit';
@@ -37,7 +86,11 @@ function get_all_tokens($limit = null, $offset = null) {
     $stmt = $db->prepare($sql);
     
     foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value, PDO::PARAM_INT);
+        if ($key == ':limit' || $key == ':offset') {
+            $stmt->bindValue($key, $value, PDO::PARAM_INT);
+        } else {
+            $stmt->bindValue($key, $value);
+        }
     }
     
     $stmt->execute();
@@ -45,9 +98,66 @@ function get_all_tokens($limit = null, $offset = null) {
 }
 
 // 获取Token总数
-function get_tokens_count() {
+function get_tokens_count($search = null, $expire_filter = null) {
     $db = get_db_connection();
-    $stmt = $db->query('SELECT COUNT(*) FROM tokens');
+    
+    $sql = 'SELECT COUNT(*) FROM tokens';
+    $where_conditions = [];
+    $params = [];
+    
+    // 搜索条件
+    if (!empty($search)) {
+        $where_conditions[] = 'token LIKE :search';
+        $params[':search'] = '%' . $search . '%';
+    }
+    
+    // 到期时间筛选
+    if (!empty($expire_filter)) {
+        $now = time();
+        switch ($expire_filter) {
+            case 'expired':
+                $where_conditions[] = 'expire_at > 0 AND expire_at < :now';
+                $params[':now'] = $now;
+                break;
+            case '3':
+                $where_conditions[] = 'expire_at > :now AND expire_at <= :expire_time';
+                $params[':now'] = $now;
+                $params[':expire_time'] = $now + (3 * 24 * 3600);
+                break;
+            case '7':
+                $where_conditions[] = 'expire_at > :now AND expire_at <= :expire_time';
+                $params[':now'] = $now;
+                $params[':expire_time'] = $now + (7 * 24 * 3600);
+                break;
+            case '15':
+                $where_conditions[] = 'expire_at > :now AND expire_at <= :expire_time';
+                $params[':now'] = $now;
+                $params[':expire_time'] = $now + (15 * 24 * 3600);
+                break;
+            case '30':
+                $where_conditions[] = 'expire_at > :now AND expire_at <= :expire_time';
+                $params[':now'] = $now;
+                $params[':expire_time'] = $now + (30 * 24 * 3600);
+                break;
+            case '365':
+                $where_conditions[] = 'expire_at > :now AND expire_at <= :expire_time';
+                $params[':now'] = $now;
+                $params[':expire_time'] = $now + (365 * 24 * 3600);
+                break;
+        }
+    }
+    
+    if (!empty($where_conditions)) {
+        $sql .= ' WHERE ' . implode(' AND ', $where_conditions);
+    }
+    
+    $stmt = $db->prepare($sql);
+    
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    
+    $stmt->execute();
     return $stmt->fetchColumn();
 }
 
@@ -194,6 +304,33 @@ function get_logs_count($token = null) {
 function format_timestamp($timestamp, $format = 'Y-m-d H:i:s') {
     if (!$timestamp) return '永不过期';
     return date($format, $timestamp);
+}
+
+// 计算剩余天数
+function calculate_remaining_days($expire_at) {
+    if (!$expire_at || $expire_at == 0) {
+        return '永不过期';
+    }
+    
+    $now = time();
+    $remaining_seconds = $expire_at - $now;
+    
+    if ($remaining_seconds <= 0) {
+        return '<span style="color: #e74c3c;">已过期</span>';
+    }
+    
+    $remaining_days = ceil($remaining_seconds / (24 * 3600));
+    
+    // 根据剩余天数设置不同颜色
+    if ($remaining_days <= 3) {
+        return '<span style="color: #e74c3c; font-weight: bold;">' . $remaining_days . ' 天</span>';
+    } elseif ($remaining_days <= 7) {
+        return '<span style="color: #f39c12; font-weight: bold;">' . $remaining_days . ' 天</span>';
+    } elseif ($remaining_days <= 30) {
+        return '<span style="color: #f1c40f;">' . $remaining_days . ' 天</span>';
+    } else {
+        return '<span style="color: #27ae60;">' . $remaining_days . ' 天</span>';
+    }
 }
 
 // 生成分页HTML

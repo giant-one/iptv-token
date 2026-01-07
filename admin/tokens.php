@@ -9,6 +9,10 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
+// 获取搜索参数
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$expire_filter = isset($_GET['expire_filter']) ? $_GET['expire_filter'] : '';
+
 // 分页参数
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $page = max(1, $page);
@@ -16,10 +20,10 @@ $per_page = 10;
 $offset = ($page - 1) * $per_page;
 
 // 获取Token总数
-$total_tokens = get_tokens_count();
+$total_tokens = get_tokens_count($search, $expire_filter);
 
 // 获取当前页的Token
-$tokens = get_all_tokens($per_page, $offset);
+$tokens = get_all_tokens($per_page, $offset, $search, $expire_filter);
 
 // 获取所有播放列表
 $playlists = get_all_playlists();
@@ -33,6 +37,57 @@ require_once '../templates/header.php';
     <a href="token_add.php" class="btn btn-success">添加新 Token</a>
 </div>
 
+<!-- 搜索表单 -->
+<form method="GET" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+    <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
+        <div>
+            <label for="search" style="display: block; margin-bottom: 5px; font-weight: bold;">搜索Token:</label>
+            <input type="text" id="search" name="search" value="<?php echo htmlspecialchars($search); ?>" 
+                   placeholder="输入Token进行搜索" 
+                   style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 250px;">
+        </div>
+        <div>
+            <label for="expire_filter" style="display: block; margin-bottom: 5px; font-weight: bold;">到期时间筛选:</label>
+            <select id="expire_filter" name="expire_filter" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 180px;">
+                <option value="">全部</option>
+                <option value="expired" <?php echo $expire_filter === 'expired' ? 'selected' : ''; ?>>已过期</option>
+                <option value="3" <?php echo $expire_filter === '3' ? 'selected' : ''; ?>>3天内到期</option>
+                <option value="7" <?php echo $expire_filter === '7' ? 'selected' : ''; ?>>7天内到期</option>
+                <option value="15" <?php echo $expire_filter === '15' ? 'selected' : ''; ?>>15天内到期</option>
+                <option value="30" <?php echo $expire_filter === '30' ? 'selected' : ''; ?>>30天内到期</option>
+                <option value="365" <?php echo $expire_filter === '365' ? 'selected' : ''; ?>>1年内到期</option>
+            </select>
+        </div>
+        <div>
+            <button type="submit" class="btn btn-primary" style="margin-right: 10px;">搜索</button>
+            <a href="tokens.php" class="btn">清除筛选</a>
+        </div>
+    </div>
+    <?php if (!empty($search) || !empty($expire_filter)): ?>
+    <div style="margin-top: 10px; color: #666; font-size: 14px;">
+        当前筛选条件: 
+        <?php if (!empty($search)): ?>
+            Token包含 "<strong><?php echo htmlspecialchars($search); ?></strong>"
+        <?php endif; ?>
+        <?php if (!empty($expire_filter)): ?>
+            <?php if (!empty($search)): ?> + <?php endif; ?>
+            <?php
+            $filter_text = [
+                'expired' => '已过期',
+                '3' => '3天内到期',
+                '7' => '7天内到期', 
+                '15' => '15天内到期',
+                '30' => '30天内到期',
+                '365' => '1年内到期'
+            ];
+            echo '<strong>' . $filter_text[$expire_filter] . '</strong>';
+            ?>
+        <?php endif; ?>
+        (共 <?php echo $total_tokens; ?> 条记录)
+    </div>
+    <?php endif; ?>
+</form>
+
 <?php if (count($tokens) > 0): ?>
 <table>
     <thead>
@@ -40,6 +95,7 @@ require_once '../templates/header.php';
             <th>ID</th>
             <th>Token</th>
             <th>过期时间</th>
+            <th>剩余天数</th>
             <th>使用次数</th>
             <th>限制次数</th>
             <th>备注</th>
@@ -53,6 +109,7 @@ require_once '../templates/header.php';
             <td><?php echo $token['id']; ?></td>
             <td><?php echo htmlspecialchars($token['token']); ?></td>
             <td><?php echo format_timestamp($token['expire_at']); ?></td>
+            <td><?php echo calculate_remaining_days($token['expire_at']); ?></td>
             <td><?php echo $token['usage_count']; ?></td>
             <td><?php echo $token['max_usage'] > 0 ? $token['max_usage'] : '∞'; ?></td>
             <td><?php echo htmlspecialchars($token['note']); ?></td>
@@ -69,7 +126,18 @@ require_once '../templates/header.php';
 </table>
 
 <?php
-echo generate_pagination($total_tokens, $per_page, $page, 'tokens.php?page=%d');
+// 构建分页URL，保持搜索参数
+$pagination_params = [];
+if (!empty($search)) {
+    $pagination_params[] = 'search=' . urlencode($search);
+}
+if (!empty($expire_filter)) {
+    $pagination_params[] = 'expire_filter=' . urlencode($expire_filter);
+}
+$pagination_query = !empty($pagination_params) ? '&' . implode('&', $pagination_params) : '';
+$pagination_url = 'tokens.php?page=%d' . $pagination_query;
+
+echo generate_pagination($total_tokens, $per_page, $page, $pagination_url);
 ?>
 
 <?php else: ?>
