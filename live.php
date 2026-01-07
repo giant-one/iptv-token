@@ -9,15 +9,22 @@ function processM3UContent($content, $tokenInfo) {
     $processedLines = [];
     $addedCustomEntries = false;
     $foundFengniaoExtinf = false;
+    $addedEXTm3u = false;
     
     // 获取当前时间和到期时间
     $currentTime = date('Y-m-d H:i:s');
     $expireTime = $tokenInfo['expire_at'] ? date('Y-m-d H:i:s', $tokenInfo['expire_at']) : '永不过期';
     $tokenId = $tokenInfo['id'];
-    
+
     foreach ($lines as $line) {
         $processedLines[] = $line;
-        
+
+        // 检测是否是#EXTM3U
+        if (!$addedEXTm3u && strpos($line, '#EXTM3U') !== false) {
+            $processedLines[0] .= ' x-tvg-url="https://live.fanmingming.com/e.xml,http://epg.51zmt.xyz:8000/epg.xml.gz,https://epg.v1.mk/xmltv.xml.gz,http://epg.best/tv/program.xml.gz,https://raw.githubusercontent.com/frantz/EPG/master/epg.xml.gz"';
+            $addedEXTm3u = true;
+        }
+
         // 检查是否找到蜂鸟传媒的EXTINF行
         if (!$addedCustomEntries && strpos($line, 'group-title="蜂鸟传媒"') !== false) {
             $foundFengniaoExtinf = true;
