@@ -17,6 +17,7 @@ function processM3UContent($content, $tokenInfo) {
     $tokenId = $tokenInfo['id'];
 
     foreach ($lines as $line) {
+        if (empty($line)) {continue;}
         $processedLines[] = $line;
 
         // 检测是否是#EXTM3U
@@ -73,11 +74,22 @@ if ($isBrowser) {
 
 $token = $_GET['token'] ?? '';
 $channel = $_GET['c'] ?? '';
-$pathType = $_GET['t'] ?? '';
+$playlist_id = $_GET['p'] ?? ''; // 播放列表ID
+$path_type = $_GET['t'] ?? ''; //旧版本参数
 
 if (!$token || !$channel) {
     http_response_code(400);
     echo 'Invalid request';
+    exit;
+}
+
+if (!$playlist_id && $path_type) {
+    $playlist_id = 1;
+}
+
+if (!$playlist_id) {
+    http_response_code(400);
+    echo 'Missing playlist parameter';
     exit;
 }
 
@@ -109,6 +121,37 @@ try {
         exit;
     }
 
+    $token_id = $row['id'];
+
+    // 验证Token是否有该播放列表的权限
+    $playlist_id_int = (int)$playlist_id;
+
+    // 检查播放列表是否存在
+    $playlistStmt = $db->prepare('SELECT * FROM playlists WHERE id = :id');
+    $playlistStmt->bindValue(':id', $playlist_id_int, PDO::PARAM_INT);
+    $playlistStmt->execute();
+    $playlistRow = $playlistStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$playlistRow) {
+        // 播放列表不存在
+        http_response_code(404);
+        echo 'Playlist not found';
+        exit;
+    }
+
+    // 检查Token是否有该播放列表的权限
+    $permissionStmt = $db->prepare('SELECT COUNT(*) FROM token_playlists WHERE token_id = :token_id AND playlist_id = :playlist_id');
+    $permissionStmt->bindValue(':token_id', $token_id, PDO::PARAM_INT);
+    $permissionStmt->bindValue(':playlist_id', $playlist_id_int, PDO::PARAM_INT);
+    $permissionStmt->execute();
+
+    if ($permissionStmt->fetchColumn() == 0) {
+        // 没有权限访问该播放列表
+        http_response_code(403);
+        echo 'Access denied: No permission for this playlist';
+        exit;
+    }
+
     // 记录日志和计数
     $insertStmt = $db->prepare('INSERT INTO logs(token, ip, channel, access_time, user_agent) VALUES (:token, :ip, :channel, :access_time, :user_agent)');
     $insertStmt->bindValue(':token', $token);
@@ -123,12 +166,8 @@ try {
     $updateStmt->execute();
 
     // 验证通过后获取播放列表内容并进行二次加工
-    // 构建请求URL: 域名/{t}/playlist.m3u
-    if ($pathType) {
-        $targetUrl = rtrim(REDIRECT_URL, '/') . '/' . $pathType . '/playlist.m3u';
-    } else {
-        $targetUrl = rtrim(REDIRECT_URL, '/') . '/live/playlist.m3u';
-    }
+    // 直接使用数据库中的URL
+    $targetUrl = $playlistRow['url'];
 
     // 获取原始m3u内容
     $ch = curl_init();
@@ -146,7 +185,7 @@ try {
         header('Location: ' . $targetUrl, true, 302);
         exit;
     }
-    
+
     // 对内容进行二次加工
     $processedContent = processM3UContent($originalContent, $row);
     

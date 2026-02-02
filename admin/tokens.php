@@ -25,8 +25,16 @@ $total_tokens = get_tokens_count($search, $expire_filter);
 // 获取当前页的Token
 $tokens = get_all_tokens($per_page, $offset, $search, $expire_filter);
 
-// 获取所有播放列表
-$playlists = get_all_playlists();
+// 为每个token获取其有权限的播放列表
+$tokens_with_playlists = [];
+foreach ($tokens as $token) {
+    $token['playlists'] = get_token_playlists($token['id']);
+    $tokens_with_playlists[] = $token;
+}
+$tokens = $tokens_with_playlists;
+
+// 获取所有播放列表（用于JavaScript）
+$all_playlists = get_all_playlists();
 
 // 包含头部
 require_once '../templates/header.php';
@@ -165,16 +173,15 @@ echo generate_pagination($total_tokens, $per_page, $page, $pagination_url);
 
 <div class="usage-guide">
     <h3>使用说明</h3>
-    <p>1. Token 访问链接: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=YOUR_TOKEN&t=PLAYLIST_CODE&c=CHANNEL</code></p>
+    <p>1. Token 访问链接: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=YOUR_TOKEN&p=PLAYLIST_ID&c=CHANNEL</code></p>
     <p>2. 过期时间为空表示永不过期，限制次数为0表示无限制</p>
-    <p>3. 参数 t 表示播放列表类型（英文缩写），c 表示渠道信息</p>
-    <p>4. 点击"复制链接"可以获取所有播放列表的完整URL</p>
+    <p>3. 参数 p 表示播放列表ID，c 表示渠道信息</p>
+    <p>4. 点击"复制链接"可以获取该Token有权限的所有播放列表URL</p>
 </div>
 
 <script>
 // Token和播放列表数据
 const tokensData = <?php echo json_encode($tokens); ?>;
-const playlistsData = <?php echo json_encode($playlists); ?>;
 const baseUrl = '<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>';
 
 // 显示链接
@@ -186,16 +193,19 @@ function showLinks(tokenId) {
     linksList.innerHTML = '';
     document.getElementById('linksModal').setAttribute('data-token-id', tokenId);
 
-    if (playlistsData.length === 0) {
-        linksList.innerHTML = '<p>暂无播放列表，请先创建播放列表</p>';
+    // 使用Token自己的播放列表数据
+    const tokenPlaylists = token.playlists || [];
+
+    if (tokenPlaylists.length === 0) {
+        linksList.innerHTML = '<p>该Token暂无播放列表权限，请先编辑Token添加播放列表权限</p>';
     } else {
-        playlistsData.forEach(playlist => {
-            const url = `${baseUrl}/live.php?token=${encodeURIComponent(token.token)}&t=${encodeURIComponent(playlist.name_en)}&c=${encodeURIComponent(token.channel || '')}`;
+        tokenPlaylists.forEach(playlist => {
+            const url = `${baseUrl}/live.php?token=${encodeURIComponent(token.token)}&p=${encodeURIComponent(playlist.id)}&c=${encodeURIComponent(token.channel || '')}`;
 
             const linkDiv = document.createElement('div');
             linkDiv.style.cssText = 'margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 3px;';
             linkDiv.innerHTML = `
-                <div style="font-weight: bold; margin-bottom: 5px;">${playlist.name} (${playlist.name_en})</div>
+                <div style="font-weight: bold; margin-bottom: 5px;">${playlist.name}</div>
                 <div style="background: #f5f5f5; padding: 5px; font-family: monospace; font-size: 12px; word-break: break-all;">${url}</div>
                 <button onclick="copyToClipboard('${url.replace(/'/g, "\\'")}')" class="btn btn-sm" style="margin-top: 5px;">复制此链接</button>
             `;
@@ -328,14 +338,16 @@ function showCopyModal(text) {
 function copyAllLinks() {
     const currentTokenId = document.getElementById('linksModal').getAttribute('data-token-id');
     const token = tokensData.find(t => t.id == currentTokenId);
-    
+
     if (!token) {
         alert('找不到Token数据');
         return;
     }
 
-    if (!playlistsData || playlistsData.length === 0) {
-        alert('没有播放列表数据');
+    const tokenPlaylists = token.playlists || [];
+
+    if (!tokenPlaylists || tokenPlaylists.length === 0) {
+        alert('该Token暂无播放列表权限');
         return;
     }
 
@@ -362,11 +374,11 @@ function copyAllLinks() {
     header += `【到期时间: ${expireText}】\n`;
     header += '━'.repeat(25) + "\n\n";
 
-    // 直接从数据生成链接
+    // 只生成有权限的播放列表链接
     const list = [];
-    playlistsData.forEach(playlist => {
-        const url = `${baseUrl}/live.php?token=${encodeURIComponent(token.token)}&t=${encodeURIComponent(playlist.name_en)}&c=${encodeURIComponent(token.channel || '')}`;
-        list.push(`📺 ${playlist.name} (${playlist.name_en})\n🔗 ${url}`);
+    tokenPlaylists.forEach(playlist => {
+        const url = `${baseUrl}/live.php?token=${encodeURIComponent(token.token)}&p=${encodeURIComponent(playlist.id)}&c=${encodeURIComponent(token.channel || '')}`;
+        list.push(`📺 ${playlist.name}\n🔗 ${url}`);
     });
 
     const output =  header + list.join("\n\n") + "\n\n" + "━".repeat(25) + "\n\n" + explanation;

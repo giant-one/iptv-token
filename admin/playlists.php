@@ -12,17 +12,17 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
 // 处理添加播放列表
 if ($_POST && isset($_POST['action']) && $_POST['action'] === 'add') {
     $name = trim($_POST['name']);
-    $name_en = trim($_POST['name_en']);
-    
-    if (empty($name) || empty($name_en)) {
-        $_SESSION['flash_message'] = '播放列表名称和英文缩写不能为空';
+    $url = trim($_POST['url']);
+
+    if (empty($name) || empty($url)) {
+        $_SESSION['flash_message'] = '播放列表名称和播放地址不能为空';
         $_SESSION['flash_type'] = 'error';
     } else {
         $data = [
             'name' => $name,
-            'name_en' => $name_en
+            'url' => $url
         ];
-        
+
         if (create_playlist($data)) {
             $_SESSION['flash_message'] = '播放列表创建成功';
             $_SESSION['flash_type'] = 'success';
@@ -31,7 +31,7 @@ if ($_POST && isset($_POST['action']) && $_POST['action'] === 'add') {
             $_SESSION['flash_type'] = 'error';
         }
     }
-    
+
     header('Location: playlists.php');
     exit;
 }
@@ -40,17 +40,17 @@ if ($_POST && isset($_POST['action']) && $_POST['action'] === 'add') {
 if ($_POST && isset($_POST['action']) && $_POST['action'] === 'edit') {
     $id = (int)$_POST['id'];
     $name = trim($_POST['name']);
-    $name_en = trim($_POST['name_en']);
-    
-    if (empty($name) || empty($name_en)) {
-        $_SESSION['flash_message'] = '播放列表名称和英文缩写不能为空';
+    $url = trim($_POST['url']);
+
+    if (empty($name) || empty($url)) {
+        $_SESSION['flash_message'] = '播放列表名称和播放地址不能为空';
         $_SESSION['flash_type'] = 'error';
     } else {
         $data = [
             'name' => $name,
-            'name_en' => $name_en
+            'url' => $url
         ];
-        
+
         if (update_playlist($id, $data)) {
             $_SESSION['flash_message'] = '播放列表更新成功';
             $_SESSION['flash_type'] = 'success';
@@ -59,7 +59,7 @@ if ($_POST && isset($_POST['action']) && $_POST['action'] === 'edit') {
             $_SESSION['flash_type'] = 'error';
         }
     }
-    
+
     header('Location: playlists.php');
     exit;
 }
@@ -111,8 +111,9 @@ require_once '../templates/header.php';
             <input type="text" id="name" name="name" required style="width: 100%; padding: 8px; margin-top: 5px;">
         </div>
         <div style="margin-bottom: 15px;">
-            <label for="name_en">英文缩写:</label>
-            <input type="text" id="name_en" name="name_en" required style="width: 100%; padding: 8px; margin-top: 5px;">
+            <label for="url">播放地址:</label>
+            <input type="url" id="url" name="url" required style="width: 100%; padding: 8px; margin-top: 5px;" placeholder="https://example.com/path/playlist.m3u">
+            <small style="color: #666;">请输入完整的播放地址URL</small>
         </div>
         <div>
             <button type="submit" class="btn btn-success">创建</button>
@@ -125,12 +126,12 @@ require_once '../templates/header.php';
 <table>
     <thead>
         <tr>
-            <th>ID</th>
-            <th>播放列表名称</th>
-            <th>英文缩写</th>
-            <th>创建时间</th>
-            <th>更新时间</th>
-            <th>操作</th>
+            <th style="width: 60px;">ID</th>
+            <th style="width: 150px;">播放列表名称</th>
+            <th style="min-width: 200px;">播放地址</th>
+            <th style="width: 150px;">创建时间</th>
+            <th style="width: 150px;">更新时间</th>
+            <th style="width: 120px;">操作</th>
         </tr>
     </thead>
     <tbody>
@@ -138,11 +139,15 @@ require_once '../templates/header.php';
         <tr>
             <td><?php echo $playlist['id']; ?></td>
             <td><?php echo htmlspecialchars($playlist['name']); ?></td>
-            <td><?php echo htmlspecialchars($playlist['name_en']); ?></td>
+            <td style="word-break: break-all; max-width: 400px; overflow: hidden; text-overflow: ellipsis;">
+                <a href="<?php echo htmlspecialchars($playlist['url']); ?>" target="_blank" style="color: #007bff; text-decoration: none;" title="<?php echo htmlspecialchars($playlist['url']); ?>">
+                    <?php echo htmlspecialchars($playlist['url']); ?>
+                </a>
+            </td>
             <td><?php echo format_timestamp($playlist['created_at']); ?></td>
             <td><?php echo format_timestamp($playlist['updated_at']); ?></td>
             <td>
-                <button onclick="showEditForm(<?php echo $playlist['id']; ?>, '<?php echo htmlspecialchars($playlist['name'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($playlist['name_en'], ENT_QUOTES); ?>')" class="btn btn-primary btn-sm">编辑</button>
+                <button onclick="showEditForm(<?php echo $playlist['id']; ?>, '<?php echo htmlspecialchars($playlist['name'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($playlist['url'], ENT_QUOTES); ?>')" class="btn btn-primary btn-sm">编辑</button>
                 <a href="playlists.php?action=delete&id=<?php echo $playlist['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('确定要删除这个播放列表吗？')">删除</a>
             </td>
         </tr>
@@ -172,8 +177,9 @@ echo generate_pagination($total_playlists, $per_page, $page, 'playlists.php?page
             <input type="text" id="edit_name" name="name" required style="width: 100%; padding: 8px; margin-top: 5px;">
         </div>
         <div style="margin-bottom: 15px;">
-            <label for="edit_name_en">英文缩写:</label>
-            <input type="text" id="edit_name_en" name="name_en" required style="width: 100%; padding: 8px; margin-top: 5px;">
+            <label for="edit_url">播放地址:</label>
+            <input type="url" id="edit_url" name="url" required style="width: 100%; padding: 8px; margin-top: 5px;" placeholder="https://example.com/path/playlist.m3u">
+            <small style="color: #666;">请输入完整的播放地址URL</small>
         </div>
         <div>
             <button type="submit" class="btn btn-success">更新</button>
@@ -184,9 +190,10 @@ echo generate_pagination($total_playlists, $per_page, $page, 'playlists.php?page
 
 <div class="usage-guide">
     <h3>使用说明</h3>
-    <p>1. 播放列表用于组织和管理不同的直播源分类</p>
+    <p>1. 播放列表用于组织和管理不同的直播源</p>
     <p>2. 播放列表名称：用于显示的中文名称</p>
-    <p>3. 英文缩写：用于系统内部标识，建议使用简短的英文字母</p>
+    <p>3. 播放地址：完整的播放列表URL地址（例如：https://example.com/path/playlist.m3u）</p>
+    <p>4. 在创建Token时可以指定该Token拥有哪些播放列表的访问权限</p>
 </div>
 
 <script>
@@ -199,12 +206,12 @@ function hideAddForm() {
     document.getElementById('addForm').style.display = 'none';
 }
 
-function showEditForm(id, name, nameEn) {
+function showEditForm(id, name, url) {
     document.getElementById('editForm').style.display = 'block';
     document.getElementById('addForm').style.display = 'none';
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_name').value = name;
-    document.getElementById('edit_name_en').value = nameEn;
+    document.getElementById('edit_url').value = url;
 }
 
 function hideEditForm() {

@@ -407,45 +407,141 @@ function get_playlist_by_id($id) {
 // 创建新播放列表
 function create_playlist($data) {
     $db = get_db_connection();
-    
-    $sql = 'INSERT INTO playlists (name, name_en, created_at, updated_at) 
-            VALUES (:name, :name_en, :created_at, :updated_at)';
-            
+
+    $sql = 'INSERT INTO playlists (name, url, created_at, updated_at)
+            VALUES (:name, :url, :created_at, :updated_at)';
+
     $stmt = $db->prepare($sql);
     $now = time();
-    
+
     $stmt->bindValue(':name', $data['name']);
-    $stmt->bindValue(':name_en', $data['name_en']);
+    $stmt->bindValue(':url', $data['url']);
     $stmt->bindValue(':created_at', $now, PDO::PARAM_INT);
     $stmt->bindValue(':updated_at', $now, PDO::PARAM_INT);
-    
+
     return $stmt->execute();
 }
 
 // 更新播放列表
 function update_playlist($id, $data) {
     $db = get_db_connection();
-    
-    $sql = 'UPDATE playlists SET 
-            name = :name, 
-            name_en = :name_en, 
-            updated_at = :updated_at 
+
+    $sql = 'UPDATE playlists SET
+            name = :name,
+            url = :url,
+            updated_at = :updated_at
             WHERE id = :id';
-            
+
     $stmt = $db->prepare($sql);
-    
+
     $stmt->bindValue(':name', $data['name']);
-    $stmt->bindValue(':name_en', $data['name_en']);
+    $stmt->bindValue(':url', $data['url']);
     $stmt->bindValue(':updated_at', time(), PDO::PARAM_INT);
     $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-    
+
     return $stmt->execute();
 }
 
 // 删除播放列表
 function delete_playlist($id) {
     $db = get_db_connection();
+
+    // 先删除关联的token_playlists记录
+    $stmt = $db->prepare('DELETE FROM token_playlists WHERE playlist_id = :id');
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    // 再删除播放列表
     $stmt = $db->prepare('DELETE FROM playlists WHERE id = :id');
     $stmt->bindValue(':id', $id, PDO::PARAM_INT);
     return $stmt->execute();
 }
+
+// Token播放列表权限相关函数
+
+// 为Token添加播放列表权限
+function add_token_playlist($token_id, $playlist_id) {
+    $db = get_db_connection();
+
+    $sql = 'INSERT INTO token_playlists (token_id, playlist_id, created_at)
+            VALUES (:token_id, :playlist_id, :created_at)';
+
+    $stmt = $db->prepare($sql);
+    $stmt->bindValue(':token_id', $token_id, PDO::PARAM_INT);
+    $stmt->bindValue(':playlist_id', $playlist_id, PDO::PARAM_INT);
+    $stmt->bindValue(':created_at', time(), PDO::PARAM_INT);
+
+    try {
+        return $stmt->execute();
+    } catch (PDOException $e) {
+        // 如果已存在，忽略错误
+        return true;
+    }
+}
+
+// 删除Token的所有播放列表权限
+function delete_token_playlists($token_id) {
+    $db = get_db_connection();
+
+    $stmt = $db->prepare('DELETE FROM token_playlists WHERE token_id = :token_id');
+    $stmt->bindValue(':token_id', $token_id, PDO::PARAM_INT);
+    return $stmt->execute();
+}
+
+// 获取Token有权限的播放列表
+function get_token_playlists($token_id) {
+    $db = get_db_connection();
+
+    $sql = 'SELECT p.* FROM playlists p
+            INNER JOIN token_playlists tp ON p.id = tp.playlist_id
+            WHERE tp.token_id = :token_id
+            ORDER BY p.created_at DESC';
+
+    $stmt = $db->prepare($sql);
+    $stmt->bindValue(':token_id', $token_id, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// 获取Token有权限的播放列表ID数组
+function get_token_playlist_ids($token_id) {
+    $db = get_db_connection();
+
+    $sql = 'SELECT playlist_id FROM token_playlists WHERE token_id = :token_id';
+
+    $stmt = $db->prepare($sql);
+    $stmt->bindValue(':token_id', $token_id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    $ids = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $ids[] = $row['playlist_id'];
+    }
+    return $ids;
+}
+
+// 检查Token是否有某个播放列表的权限
+function check_token_playlist_permission($token_id, $playlist_id) {
+    $db = get_db_connection();
+
+    $sql = 'SELECT COUNT(*) FROM token_playlists
+            WHERE token_id = :token_id AND playlist_id = :playlist_id';
+
+    $stmt = $db->prepare($sql);
+    $stmt->bindValue(':token_id', $token_id, PDO::PARAM_INT);
+    $stmt->bindValue(':playlist_id', $playlist_id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return $stmt->fetchColumn() > 0;
+}
+
+// 根据URL获取播放列表
+function get_playlist_by_url($url) {
+    $db = get_db_connection();
+
+    $stmt = $db->prepare('SELECT * FROM playlists WHERE url = :url LIMIT 1');
+    $stmt->bindValue(':url', $url);
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+

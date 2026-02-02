@@ -79,9 +79,19 @@ try {
             CREATE TABLE IF NOT EXISTS playlists (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
-                name_en VARCHAR(255) NOT NULL,
+                url TEXT NOT NULL,
                 created_at BIGINT,
                 updated_at BIGINT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ";
+
+        $sqlTokenPlaylists = "
+            CREATE TABLE IF NOT EXISTS token_playlists (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                token_id INT UNSIGNED NOT NULL,
+                playlist_id INT UNSIGNED NOT NULL,
+                created_at BIGINT,
+                UNIQUE KEY unique_token_playlist (token_id, playlist_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ";
     }
@@ -89,6 +99,22 @@ try {
     $db->exec($sqlTokens);
     $db->exec($sqlLogs);
     $db->exec($sqlPlaylists);
+
+    if (DB_DRIVER === 'mysql') {
+        $db->exec($sqlTokenPlaylists);
+    } else {
+        // SQLite版本
+        $sqlTokenPlaylists = "
+            CREATE TABLE IF NOT EXISTS token_playlists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token_id INTEGER NOT NULL,
+                playlist_id INTEGER NOT NULL,
+                created_at INTEGER,
+                UNIQUE(token_id, playlist_id)
+            );
+        ";
+        $db->exec($sqlTokenPlaylists);
+    }
 
     echo "Database initialized successfully!\n";
 } catch (PDOException $e) {
