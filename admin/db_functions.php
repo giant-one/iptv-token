@@ -14,7 +14,7 @@ function get_db_connection() {
             }
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch (PDOException $e) {
-            die('数据库连接失败: ' . $e->getMessage());
+            die('数据库连接失败: ' . DB_DSN_MYSQL . "\t" . DB_USER_MYSQL. "\n".$e->getMessage());
         }
     }
     
@@ -22,9 +22,9 @@ function get_db_connection() {
 }
 
 // 获取所有Token
-function get_all_tokens($limit = null, $offset = null, $search = null, $expire_filter = null) {
+function get_all_tokens($limit = null, $offset = null, $search = null, $expire_filter = null, $status_filter = null) {
     $db = get_db_connection();
-    
+
     $sql = 'SELECT * FROM tokens';
     $where_conditions = [];
     $params = [];
@@ -70,11 +70,17 @@ function get_all_tokens($limit = null, $offset = null, $search = null, $expire_f
                 break;
         }
     }
-    
+
+    // 状态筛选
+    if ($status_filter !== null && $status_filter !== '') {
+        $where_conditions[] = 'status = :status';
+        $params[':status'] = (int)$status_filter;
+    }
+
     if (!empty($where_conditions)) {
         $sql .= ' WHERE ' . implode(' AND ', $where_conditions);
     }
-    
+
     $sql .= ' ORDER BY created_at DESC';
     
     if ($limit !== null && $offset !== null) {
@@ -98,7 +104,7 @@ function get_all_tokens($limit = null, $offset = null, $search = null, $expire_f
 }
 
 // 获取Token总数
-function get_tokens_count($search = null, $expire_filter = null) {
+function get_tokens_count($search = null, $expire_filter = null, $status_filter = null) {
     $db = get_db_connection();
     
     $sql = 'SELECT COUNT(*) FROM tokens';
@@ -146,11 +152,17 @@ function get_tokens_count($search = null, $expire_filter = null) {
                 break;
         }
     }
-    
+
+    // 状态筛选
+    if ($status_filter !== null && $status_filter !== '') {
+        $where_conditions[] = 'status = :status';
+        $params[':status'] = (int)$status_filter;
+    }
+
     if (!empty($where_conditions)) {
         $sql .= ' WHERE ' . implode(' AND ', $where_conditions);
     }
-    
+
     $stmt = $db->prepare($sql);
     
     foreach ($params as $key => $value) {
@@ -191,48 +203,127 @@ function generate_unique_token($length = 32) {
 // 创建新Token
 function create_token($data) {
     $db = get_db_connection();
-    
-    $sql = 'INSERT INTO tokens (token, expire_at, max_usage, usage_count, note, channel, created_at, updated_at) 
-            VALUES (:token, :expire_at, :max_usage, :usage_count, :note, :channel, :created_at, :updated_at)';
-            
+
+    // 检查是否有 max_ip_per_day 字段（兼容旧数据库）
+    $has_max_ip_field = false;
+    try {
+        if (DB_DRIVER === 'sqlite') {
+            $sql = "PRAGMA table_info(tokens)";
+        } else {
+            $sql = "SHOW COLUMNS FROM tokens LIKE 'max_ip_per_day'";
+        }
+        $stmt = $db->query($sql);
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($result as $row) {
+            if ((DB_DRIVER === 'sqlite' && $row['name'] === 'max_ip_per_day') ||
+                (DB_DRIVER === 'mysql' && $row['Field'] === 'max_ip_per_day')) {
+                $has_max_ip_field = true;
+                break;
+            }
+        }
+    } catch (PDOException $e) {
+        // 忽略错误，默认为false
+    }
+
+    if (DB_DRIVER === 'sqlite') {
+        $sql = 'INSERT INTO tokens (token, expire_at, max_usage, usage_count, status, note, channel, created_at, updated_at';
+        if ($has_max_ip_field) {
+            $sql .= ', max_ip_per_day';
+        }
+        $sql .= ') VALUES (:token, :expire_at, :max_usage, :usage_count, :status, :note, :channel, :created_at, :updated_at';
+        if ($has_max_ip_field) {
+            $sql .= ', :max_ip_per_day';
+        }
+        $sql .= ')';
+    } else {
+        $sql = 'INSERT INTO tokens (token, expire_at, max_usage, usage_count, status, note, channel, created_at, updated_at';
+        if ($has_max_ip_field) {
+            $sql .= ', max_ip_per_day';
+        }
+        $sql .= ') VALUES (:token, :expire_at, :max_usage, :usage_count, :status, :note, :channel, :created_at, :updated_at';
+        if ($has_max_ip_field) {
+            $sql .= ', :max_ip_per_day';
+        }
+        $sql .= ')';
+    }
+
     $stmt = $db->prepare($sql);
     $now = time();
-    
+
     $stmt->bindValue(':token', $data['token']);
     $stmt->bindValue(':expire_at', $data['expire_at'] ?: 0, PDO::PARAM_INT);
     $stmt->bindValue(':max_usage', $data['max_usage'] ?: 0, PDO::PARAM_INT);
     $stmt->bindValue(':usage_count', 0, PDO::PARAM_INT);
+    $stmt->bindValue(':status', $data['status'] ?? 1, PDO::PARAM_INT);
     $stmt->bindValue(':note', $data['note']);
     $stmt->bindValue(':channel', $data['channel'] ?? null);
     $stmt->bindValue(':created_at', $now, PDO::PARAM_INT);
     $stmt->bindValue(':updated_at', $now, PDO::PARAM_INT);
-    
+
+    if ($has_max_ip_field) {
+        $stmt->bindValue(':max_ip_per_day', $data['max_ip_per_day'] ?? 0, PDO::PARAM_INT);
+    }
+
     return $stmt->execute();
 }
 
 // 更新Token
 function update_token($id, $data) {
     $db = get_db_connection();
-    
-    $sql = 'UPDATE tokens SET 
-            token = :token, 
-            expire_at = :expire_at, 
-            max_usage = :max_usage, 
-            note = :note, 
-            channel = :channel, 
-            updated_at = :updated_at 
-            WHERE id = :id';
-            
+
+    // 检查是否有 max_ip_per_day 字段（兼容旧数据库）
+    $has_max_ip_field = false;
+    try {
+        if (DB_DRIVER === 'sqlite') {
+            $sql = "PRAGMA table_info(tokens)";
+        } else {
+            $sql = "SHOW COLUMNS FROM tokens LIKE 'max_ip_per_day'";
+        }
+        $stmt = $db->query($sql);
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($result as $row) {
+            if ((DB_DRIVER === 'sqlite' && $row['name'] === 'max_ip_per_day') ||
+                (DB_DRIVER === 'mysql' && $row['Field'] === 'max_ip_per_day')) {
+                $has_max_ip_field = true;
+                break;
+            }
+        }
+    } catch (PDOException $e) {
+        // 忽略错误，默认为false
+    }
+
+    $sql = 'UPDATE tokens SET
+            token = :token,
+            expire_at = :expire_at,
+            max_usage = :max_usage,
+            status = :status,
+            note = :note,
+            channel = :channel,
+            updated_at = :updated_at';
+
+    if ($has_max_ip_field) {
+        $sql .= ', max_ip_per_day = :max_ip_per_day';
+    }
+
+    $sql .= ' WHERE id = :id';
+
     $stmt = $db->prepare($sql);
-    
+
     $stmt->bindValue(':token', $data['token']);
     $stmt->bindValue(':expire_at', $data['expire_at'] ?: 0, PDO::PARAM_INT);
     $stmt->bindValue(':max_usage', $data['max_usage'] ?: 0, PDO::PARAM_INT);
+    $stmt->bindValue(':status', $data['status'] ?? 1, PDO::PARAM_INT);
     $stmt->bindValue(':note', $data['note']);
     $stmt->bindValue(':channel', $data['channel'] ?? null);
     $stmt->bindValue(':updated_at', time(), PDO::PARAM_INT);
     $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-    
+
+    if ($has_max_ip_field) {
+        $stmt->bindValue(':max_ip_per_day', $data['max_ip_per_day'] ?? 0, PDO::PARAM_INT);
+    }
+
     return $stmt->execute();
 }
 
@@ -245,6 +336,26 @@ function delete_token($id) {
 }
 
 // 获取访问日志
+// 检查Token是否有效（检查过期时间、使用次数、状态）
+function is_token_valid($token_data) {
+    // 检查状态
+    if (isset($token_data['status']) && $token_data['status'] != 1) {
+        return false;
+    }
+
+    // 检查过期时间
+    if ($token_data['expire_at'] > 0 && $token_data['expire_at'] < time()) {
+        return false;
+    }
+
+    // 检查使用次数
+    if ($token_data['max_usage'] > 0 && $token_data['usage_count'] >= $token_data['max_usage']) {
+        return false;
+    }
+
+    return true;
+}
+
 function get_logs($limit = null, $offset = null, $token = null) {
     $db = get_db_connection();
     
@@ -544,4 +655,95 @@ function get_playlist_by_url($url) {
     $stmt->execute();
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
+
+// 获取某Token今天的IP访问数量
+function get_token_today_ip_count($token) {
+    $db = get_db_connection();
+
+    // 获取今天的开始时间戳（0点）
+    $today_start = mktime(0, 0, 0, date('n'), date('j'), date('Y'));
+    $today_end = $today_start + 86400 - 1; // 今天的结束时间戳（23:59:59）
+
+    if (DB_DRIVER === 'sqlite') {
+        $sql = 'SELECT COUNT(DISTINCT ip) as count FROM logs WHERE token = :token AND access_time >= :today_start AND access_time <= :today_end';
+    } else {
+        $sql = 'SELECT COUNT(DISTINCT ip) as count FROM logs WHERE token = :token AND access_time >= :today_start AND access_time <= :today_end';
+    }
+
+    $stmt = $db->prepare($sql);
+    $stmt->bindValue(':token', $token);
+    $stmt->bindValue(':today_start', $today_start, PDO::PARAM_INT);
+    $stmt->bindValue(':today_end', $today_end, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return (int)$stmt->fetchColumn();
+}
+
+// 查询IP地理位置
+function query_ip_location($ip) {
+    // 本地IP直接返回
+    if ($ip === '127.0.0.1' || $ip === '::1' || $ip === 'localhost') {
+        return ['ret' => 'success', 'country' => '本地', 'prov' => '', 'city' => ''];
+    }
+
+    $url = "https://ip9.com.cn/get?ip=" . urlencode($ip);
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+    $response = curl_exec($ch);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($error) {
+        return ['ret' => 'error', 'country' => '查询失败', 'prov' => '', 'city' => ''];
+    }
+
+    $data = json_decode($response, true);
+    if ($data && isset($data['ret']) && $data['ret'] == 200 && isset($data['data'])) {
+        // 转换为我们统一的格式
+        return [
+            'ret' => 'success',
+            'country' => $data['data']['country'] ?? '',
+            'prov' => $data['data']['prov'] ?? '',
+            'city' => $data['data']['city'] ?? ''
+        ];
+    }
+
+    return ['ret' => 'error', 'country' => '未知', 'prov' => '', 'city' => ''];
+}
+
+// 删除单条日志
+function delete_log($log_id) {
+    $db = get_db_connection();
+    $stmt = $db->prepare('DELETE FROM logs WHERE id = :id');
+    $stmt->bindValue(':id', $log_id, PDO::PARAM_INT);
+    return $stmt->execute();
+}
+
+// 批量删除日志
+function delete_logs($log_ids) {
+    if (empty($log_ids)) {
+        return false;
+    }
+
+    $db = get_db_connection();
+    $placeholders = str_repeat('?,', count($log_ids) - 1) . '?';
+    $sql = "DELETE FROM logs WHERE id IN ($placeholders)";
+    $stmt = $db->prepare($sql);
+    return $stmt->execute($log_ids);
+}
+
+// 删除某Token的所有日志
+function delete_logs_by_token($token) {
+    $db = get_db_connection();
+    $stmt = $db->prepare('DELETE FROM logs WHERE token = :token');
+    $stmt->bindValue(':token', $token);
+    return $stmt->execute();
+}
+
 

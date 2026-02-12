@@ -22,3 +22,4 @@ Thumbs.db
 
 #忽略编辑器文件
 .idea/*
+admin/cache

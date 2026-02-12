@@ -21,6 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $expire_date = $_POST['expire_date'] ?? '';
     $expire_time = $_POST['expire_time'] ?? '';
     $max_usage = isset($_POST['max_usage']) ? (int)$_POST['max_usage'] : 0;
+    $max_ip_per_day = isset($_POST['max_ip_per_day']) ? (int)$_POST['max_ip_per_day'] : 0;
+    $status = isset($_POST['status']) ? (int)$_POST['status'] : 1;
     $note = $_POST['note'] ?? '';
     $channel = $_POST['channel'] ?? '';
     $playlist_ids = $_POST['playlist_ids'] ?? [];
@@ -52,6 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'token' => $token,
             'expire_at' => $expire_at,
             'max_usage' => $max_usage,
+            'max_ip_per_day' => $max_ip_per_day,
+            'status' => $status,
             'note' => $note,
             'channel' => $channel
         ];
@@ -136,11 +140,30 @@ require_once '../templates/header.php';
         <label for="max_usage">最大使用次数（0表示无限制）</label>
         <input type="number" class="form-control" id="max_usage" name="max_usage" min="0" value="<?php echo isset($_POST['max_usage']) ? (int)$_POST['max_usage'] : 0; ?>">
     </div>
-    
+
+    <div class="form-group">
+        <label for="max_ip_per_day">每天最大IP数（0表示无限制）</label>
+        <input type="number" class="form-control" id="max_ip_per_day" name="max_ip_per_day" min="0" value="<?php echo isset($_POST['max_ip_per_day']) ? (int)$_POST['max_ip_per_day'] : 5; ?>">
+        <small>每天允许不同的IP地址访问此Token的数量，超过后当天将拒绝访问</small>
+    </div>
+
     <div class="form-group">
         <label for="channel">渠道信息</label>
         <input type="text" class="form-control" id="channel" name="channel" value="<?php echo isset($_POST['channel']) ? htmlspecialchars($_POST['channel']) : ''; ?>" placeholder="如：咸鱼、小红书等" required>
         <small>表示用户来源的渠道，复制链接时将自动带上此参数</small>
+    </div>
+
+    <div class="form-group">
+        <label>状态</label>
+        <div style="display: flex; gap: 20px;">
+            <label style="font-weight: normal;">
+                <input type="radio" name="status" value="1" checked> 有效
+            </label>
+            <label style="font-weight: normal;">
+                <input type="radio" name="status" value="0"> 无效
+            </label>
+        </div>
+        <small>设置为无效后，该Token将无法访问播放列表</small>
     </div>
 
     <div class="form-group">

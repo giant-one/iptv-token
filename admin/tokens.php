@@ -12,6 +12,7 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
 // 获取搜索参数
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $expire_filter = isset($_GET['expire_filter']) ? $_GET['expire_filter'] : '';
+$status_filter = isset($_GET['status_filter']) ? $_GET['status_filter'] : '';
 
 // 分页参数
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -20,15 +21,17 @@ $per_page = 10;
 $offset = ($page - 1) * $per_page;
 
 // 获取Token总数
-$total_tokens = get_tokens_count($search, $expire_filter);
+$total_tokens = get_tokens_count($search, $expire_filter, $status_filter);
 
 // 获取当前页的Token
-$tokens = get_all_tokens($per_page, $offset, $search, $expire_filter);
+$tokens = get_all_tokens($per_page, $offset, $search, $expire_filter, $status_filter);
 
 // 为每个token获取其有权限的播放列表
 $tokens_with_playlists = [];
 foreach ($tokens as $token) {
     $token['playlists'] = get_token_playlists($token['id']);
+    // 获取今天的IP使用数量
+    $token['today_ip_count'] = get_token_today_ip_count($token['token']);
     $tokens_with_playlists[] = $token;
 }
 $tokens = $tokens_with_playlists;
@@ -67,13 +70,21 @@ require_once '../templates/header.php';
             </select>
         </div>
         <div>
+            <label for="status_filter" style="display: block; margin-bottom: 5px; font-weight: bold;">状态筛选:</label>
+            <select id="status_filter" name="status_filter" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 120px;">
+                <option value="">全部</option>
+                <option value="1" <?php echo $status_filter === '1' ? 'selected' : ''; ?>>有效</option>
+                <option value="0" <?php echo $status_filter === '0' ? 'selected' : ''; ?>>无效</option>
+            </select>
+        </div>
+        <div>
             <button type="submit" class="btn btn-primary" style="margin-right: 10px;">搜索</button>
             <a href="tokens.php" class="btn">清除筛选</a>
         </div>
     </div>
-    <?php if (!empty($search) || !empty($expire_filter)): ?>
+    <?php if (!empty($search) || !empty($expire_filter) || $status_filter !== ''): ?>
     <div style="margin-top: 10px; color: #666; font-size: 14px;">
-        当前筛选条件: 
+        当前筛选条件:
         <?php if (!empty($search)): ?>
             Token包含 "<strong><?php echo htmlspecialchars($search); ?></strong>"
         <?php endif; ?>
@@ -83,13 +94,17 @@ require_once '../templates/header.php';
             $filter_text = [
                 'expired' => '已过期',
                 '3' => '3天内到期',
-                '7' => '7天内到期', 
+                '7' => '7天内到期',
                 '15' => '15天内到期',
                 '30' => '30天内到期',
                 '365' => '1年内到期'
             ];
             echo '<strong>' . $filter_text[$expire_filter] . '</strong>';
             ?>
+        <?php endif; ?>
+        <?php if ($status_filter !== ''): ?>
+            <?php if (!empty($search) || !empty($expire_filter)): ?> + <?php endif; ?>
+            <strong><?php echo $status_filter == '1' ? '有效' : '无效'; ?></strong>
         <?php endif; ?>
         (共 <?php echo $total_tokens; ?> 条记录)
     </div>
@@ -106,6 +121,9 @@ require_once '../templates/header.php';
             <th>剩余天数</th>
             <th>使用次数</th>
             <th>限制次数</th>
+            <th>今日IP</th>
+            <th>IP限制</th>
+            <th>状态</th>
             <th>备注</th>
             <th>创建时间</th>
             <th>操作</th>
@@ -120,6 +138,28 @@ require_once '../templates/header.php';
             <td><?php echo calculate_remaining_days($token['expire_at']); ?></td>
             <td><?php echo $token['usage_count']; ?></td>
             <td><?php echo $token['max_usage'] > 0 ? $token['max_usage'] : '∞'; ?></td>
+            <td>
+                <?php echo $token['today_ip_count']; ?>
+                <?php if (isset($token['max_ip_per_day']) && $token['max_ip_per_day'] > 0): ?>
+                    / <?php echo $token['max_ip_per_day']; ?>
+                    <?php if ($token['today_ip_count'] >= $token['max_ip_per_day']): ?>
+                        <span style="color: #e74c3c; font-weight: bold;">(已满)</span>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <span style="color: #999;">/∞</span>
+                <?php endif; ?>
+            </td>
+            <td><?php echo (isset($token['max_ip_per_day']) && $token['max_ip_per_day'] > 0) ? $token['max_ip_per_day'] . '/天' : '∞'; ?></td>
+            <td>
+                <?php
+                $status = isset($token['status']) ? (int)$token['status'] : 1;
+                if ($status == 1) {
+                    echo '<span style="color: #27ae60; font-weight: bold;">有效</span>';
+                } else {
+                    echo '<span style="color: #e74c3c; font-weight: bold;">无效</span>';
+                }
+                ?>
+            </td>
             <td><?php echo htmlspecialchars($token['note']); ?></td>
             <td><?php echo format_timestamp($token['created_at']); ?></td>
             <td>
@@ -142,6 +182,9 @@ if (!empty($search)) {
 if (!empty($expire_filter)) {
     $pagination_params[] = 'expire_filter=' . urlencode($expire_filter);
 }
+if ($status_filter !== '') {
+    $pagination_params[] = 'status_filter=' . urlencode($status_filter);
+}
 $pagination_query = !empty($pagination_params) ? '&' . implode('&', $pagination_params) : '';
 $pagination_url = 'tokens.php?page=%d' . $pagination_query;
 
@@ -161,7 +204,6 @@ echo generate_pagination($total_tokens, $per_page, $page, $pagination_url);
         <div id="linksList"></div>
         <div style="text-align: center; margin-top: 20px;">
             <button onclick="closeLinksModal()" class="btn">关闭</button>
-            <button onclick="copyAllLinks()" class="btn btn-success">复制全部链接</button>
         </div>
     </div>
 </div>
@@ -173,10 +215,10 @@ echo generate_pagination($total_tokens, $per_page, $page, $pagination_url);
 
 <div class="usage-guide">
     <h3>使用说明</h3>
-    <p>1. Token 访问链接: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=YOUR_TOKEN&p=PLAYLIST_ID&c=CHANNEL</code></p>
+    <p>1. Token 访问链接: <code><?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]"; ?>/live.php?token=YOUR_TOKEN&c=CHANNEL</code></p>
     <p>2. 过期时间为空表示永不过期，限制次数为0表示无限制</p>
-    <p>3. 参数 p 表示播放列表ID，c 表示渠道信息</p>
-    <p>4. 点击"复制链接"可以获取该Token有权限的所有播放列表URL</p>
+    <p>3. 参数 c 表示渠道信息</p>
+    <p>4. 点击"复制链接"获取该Token的播放链接</p>
 </div>
 
 <script>
@@ -199,18 +241,18 @@ function showLinks(tokenId) {
     if (tokenPlaylists.length === 0) {
         linksList.innerHTML = '<p>该Token暂无播放列表权限，请先编辑Token添加播放列表权限</p>';
     } else {
-        tokenPlaylists.forEach(playlist => {
-            const url = `${baseUrl}/live.php?token=${encodeURIComponent(token.token)}&p=${encodeURIComponent(playlist.id)}&c=${encodeURIComponent(token.channel || '')}`;
+        const url = `${baseUrl}/live.php?token=${encodeURIComponent(token.token)}&c=${encodeURIComponent(token.channel || '')}`;
 
-            const linkDiv = document.createElement('div');
-            linkDiv.style.cssText = 'margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 3px;';
-            linkDiv.innerHTML = `
-                <div style="font-weight: bold; margin-bottom: 5px;">${playlist.name}</div>
-                <div style="background: #f5f5f5; padding: 5px; font-family: monospace; font-size: 12px; word-break: break-all;">${url}</div>
-                <button onclick="copyToClipboard('${url.replace(/'/g, "\\'")}')" class="btn btn-sm" style="margin-top: 5px;">复制此链接</button>
-            `;
-            linksList.appendChild(linkDiv);
-        });
+        const linkDiv = document.createElement('div');
+        linkDiv.style.cssText = 'padding: 10px; border: 1px solid #ddd; border-radius: 3px;';
+
+        const playlistNames = tokenPlaylists.map(p => p.name).join('、');
+        linkDiv.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 10px;">播放列表：<span style="color: #666;">${playlistNames}</span></div>
+            <div style="background: #f5f5f5; padding: 10px; font-family: monospace; font-size: 13px; word-break: break-all;">${url}</div>
+            <button onclick="copyToClipboard('${url.replace(/'/g, "\\'")}')" class="btn btn-sm btn-success" style="margin-top: 10px; width: 100%;">复制链接</button>
+        `;
+        linksList.appendChild(linkDiv);
     }
     document.getElementById('linksModal').style.display = 'block';
 }
@@ -344,12 +386,7 @@ function copyAllLinks() {
         return;
     }
 
-    const tokenPlaylists = token.playlists || [];
-
-    if (!tokenPlaylists || tokenPlaylists.length === 0) {
-        alert('该Token暂无播放列表权限');
-        return;
-    }
+    const url = `${baseUrl}/live.php?token=${encodeURIComponent(token.token)}&c=${encodeURIComponent(token.channel || '')}`;
 
     let expireText = '永不过期';
     if (token.expire_at && token.expire_at > 0) {
@@ -359,29 +396,17 @@ function copyAllLinks() {
             `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
 
-    // 使用说明
-    let explanation = "💡 为什么提供多个链接？\n";
-    explanation += "━".repeat(25) + "\n";
-    explanation += "🚀 性能优化：总频道数超过8000+，单一链接加载会很慢\n";
-    explanation += "🎯 按需订阅：不同播放列表包含不同类型的频道内容\n";
-    explanation += "⚡ 灵活选择：用户可根据需要选择特定的播放列表\n";
-    explanation += "🔄 稳定流畅：分散加载，提升观看体验\n";
-    explanation += "━".repeat(25) + "\n";
-    explanation += "📌 使用建议：根据观看需求选择对应的播放列表，也可以同时订阅所有链接\n\n";
+    // 获取播放列表名称
+    const tokenPlaylists = token.playlists || [];
+    const playlistNames = tokenPlaylists.map(p => p.name).join('、');
 
     let header = '━'.repeat(25) + "\n";
     header += `【用户ID: ${token.id}】\n`;
     header += `【到期时间: ${expireText}】\n`;
+    header += `【播放列表: ${playlistNames}】\n`;
     header += '━'.repeat(25) + "\n\n";
 
-    // 只生成有权限的播放列表链接
-    const list = [];
-    tokenPlaylists.forEach(playlist => {
-        const url = `${baseUrl}/live.php?token=${encodeURIComponent(token.token)}&p=${encodeURIComponent(playlist.id)}&c=${encodeURIComponent(token.channel || '')}`;
-        list.push(`📺 ${playlist.name}\n🔗 ${url}`);
-    });
-
-    const output =  header + list.join("\n\n") + "\n\n" + "━".repeat(25) + "\n\n" + explanation;
+    const output = header + `📺 播放链接：\n${url}\n\n` + "━".repeat(25);
     copyToClipboard(output);
 }
 
