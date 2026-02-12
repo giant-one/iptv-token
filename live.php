@@ -23,19 +23,20 @@ function processM3UContent($content, $tokenInfo) {
     $addedCustomEntries = false;
     $foundFengniaoExtinf = false;
     $addedEXTm3u = false;
-    
+
     // 获取当前时间和到期时间
     $currentTime = date('Y-m-d H:i:s');
     $expireTime = $tokenInfo['expire_at'] ? date('Y-m-d H:i:s', $tokenInfo['expire_at']) : '永不过期';
     $tokenId = $tokenInfo['id'];
+    $token = $tokenInfo['token'];
 
     foreach ($lines as $line) {
         if (empty($line)) {continue;}
-        $processedLines[] = $line;
+        $processedLine = $line;
 
         // 检测是否是#EXTM3U
         if (!$addedEXTm3u && strpos($line, '#EXTM3U') !== false) {
-            $processedLines[0] .= ' x-tvg-url="https://live.fanmingming.com/e.xml,http://epg.51zmt.xyz:8000/epg.xml.gz,https://epg.v1.mk/xmltv.xml.gz,http://epg.best/tv/program.xml.gz,https://raw.githubusercontent.com/frantz/EPG/master/epg.xml.gz"';
+            $processedLine .= ' x-tvg-url="https://live.fanmingming.com/e.xml,http://epg.51zmt.xyz:8000/epg.xml.gz,https://epg.v1.mk/xmltv.xml.gz,http://epg.best/tv/program.xml.gz,https://raw.githubusercontent.com/frantz/EPG/master/epg.xml.gz"';
             $addedEXTm3u = true;
         }
 
@@ -43,13 +44,13 @@ function processM3UContent($content, $tokenInfo) {
         if (!$addedCustomEntries && strpos($line, 'group-title="蜂鸟传媒"') !== false) {
             $foundFengniaoExtinf = true;
         }
-        
+
         // 如果上一行是蜂鸟传媒的EXTINF行，当前行应该是对应的URL行
         // 在URL行之后添加自定义条目
-        if ($foundFengniaoExtinf && !$addedCustomEntries && 
-            !empty(trim($line)) && 
+        if ($foundFengniaoExtinf && !$addedCustomEntries &&
+            !empty(trim($line)) &&
             !str_starts_with(trim($line), '#')) {
-            
+
             // 添加刷新时间条目
             $processedLines[] = '#EXTINF:-1 tvg-chno="1" tvg-id="" tvg-name="刷新时间-' . $tokenId . " ". $currentTime . '" tvg-logo="http://www.xxl2a.xyz:5080/logo.png" group-title="蜂鸟传媒",刷新时间 ' . $currentTime;
             $processedLines[] = 'http://xxl2a.xyz:9527/hls/ok.m3u8';
@@ -61,8 +62,16 @@ function processM3UContent($content, $tokenInfo) {
             $addedCustomEntries = true;
             $foundFengniaoExtinf = false;
         }
+
+        // 替换URL中的token参数（仅当不是注释行时）
+        if (!str_starts_with(trim($line), '#') && !empty(trim($line))) {
+            // 正则匹配 token= 后面的值，并替换为当前用户的token
+            $processedLine = preg_replace('/token=[^&\s]+/', 'token=' . $token, $line);
+        }
+
+        $processedLines[] = $processedLine;
     }
-    
+
     return implode("\n", $processedLines);
 }
 
