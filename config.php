@@ -37,4 +37,7 @@ define('REDIRECT_URL', $_ENV['REDIRECT_URL'] ?? getenv('REDIRECT_URL') ?: 'http:
 
 // 过期或无效令牌重定向 URL
 define('EXPIRED_REDIRECT_URL', $_ENV['EXPIRED_REDIRECT_URL'] ?? getenv('EXPIRED_REDIRECT_URL') ?: 'http://example.com/expired.m3u');
+
+// 签名密钥
+define('SIGNATURE_SECRET_KEY', $_ENV['SIGNATURE_SECRET_KEY'] ?? getenv('SIGNATURE_SECRET_KEY') ?: 'efb61c6eee44c37dda4136850527cb74'); //md5("iptv proxy")
 ?>

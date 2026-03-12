@@ -1,5 +1,6 @@
 <?php
 require_once 'config.php';
+require_once 'SignatureValidator.php';
 
 /**
  * 记录访问日志
@@ -29,6 +30,10 @@ function processM3UContent($content, $tokenInfo) {
     $expireTime = $tokenInfo['expire_at'] ? date('Y-m-d H:i:s', $tokenInfo['expire_at']) : '永不过期';
     $tokenId = $tokenInfo['id'];
     $token = $tokenInfo['token'];
+
+    // 生成签名和过期时间
+    $validator = new SignatureValidator(); // 使用配置文件中的密钥
+    $signatureInfo = $validator->generateSignature($token);
 
     foreach ($lines as $line) {
         if (empty($line)) {continue;}
@@ -63,10 +68,13 @@ function processM3UContent($content, $tokenInfo) {
             $foundFengniaoExtinf = false;
         }
 
-        // 替换URL中的token参数（仅当不是注释行时）
-        if (!str_starts_with(trim($line), '#') && !empty(trim($line))) {
-            // 正则匹配 token= 后面的值，并替换为当前用户的token
-            $processedLine = preg_replace('/token=[^&\s]+/', 'token=' . $token, $line);
+        // 替换URL中的token参数（仅当不是注释行且原URL包含token参数时）
+        if (!str_starts_with(trim($line), '#') && !empty(trim($line)) && (strpos($line, '&token=') !== false || strpos($line, '?token=') !== false)) {
+            // 替换原有的token参数并添加exp和sign参数
+            $processedLine = preg_replace('/([&?])token=[^&\s]*/', '$1token=' . urlencode($token), $line);
+
+            // 添加exp和sign参数
+            $processedLine .= '&exp=' . $signatureInfo['exp'] . '&sign=' . $signatureInfo['sign'];
         }
 
         $processedLines[] = $processedLine;
