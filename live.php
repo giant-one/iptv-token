@@ -32,7 +32,8 @@ function processM3UContent($content, $tokenInfo) {
     $token = $tokenInfo['token'];
 
     // 生成签名和过期时间
-    $validator = new SignatureValidator(); // 使用配置文件中的密钥
+    $secretKey = defined('SIGNATURE_SECRET_KEY') ? SIGNATURE_SECRET_KEY : 'efb61c6eee44c37dda4136850527cb74';
+    $validator = new SignatureValidator($secretKey, $tokenInfo['expire_at']); // 使用配置文件中的密钥
     $signatureInfo = $validator->generateSignature($token);
 
     foreach ($lines as $line) {

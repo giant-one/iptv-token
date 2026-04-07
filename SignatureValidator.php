@@ -15,8 +15,8 @@ class SignatureValidator {
      * @return array [exp: int, sign: string]
      */
     public function generateSignature($token) {
-        $exp = time() + $this->expireSeconds;
-
+        //$exp = time() + $this->expireSeconds;
+        $exp = $this->expireSeconds;
         // 构建待签名参数
         $params = [
             'token' => $token,
