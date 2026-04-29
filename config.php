@@ -40,4 +40,7 @@ define('EXPIRED_REDIRECT_URL', $_ENV['EXPIRED_REDIRECT_URL'] ?? getenv('EXPIRED_
 
 // 签名密钥
 define('SIGNATURE_SECRET_KEY', $_ENV['SIGNATURE_SECRET_KEY'] ?? getenv('SIGNATURE_SECRET_KEY') ?: 'efb61c6eee44c37dda4136850527cb74'); //md5("iptv proxy")
+
+// API 密钥 (用于对外 API 鉴权)
+define('API_KEY', $_ENV['API_KEY'] ?? getenv('API_KEY') ?: '4890a784271e9cbfb062c6b6e31075ad'); //md5("iptv api key")
 ?>
