@@ -59,11 +59,11 @@ function processM3UContent($content, $tokenInfo) {
 
             // 添加刷新时间条目
             $processedLines[] = '#EXTINF:-1 tvg-chno="1" tvg-id="" tvg-name="刷新时间-' . $tokenId . " ". $currentTime . '" tvg-logo="http://www.xxl2a.xyz:5080/logo.png" group-title="蜂鸟传媒",刷新时间 ' . $currentTime;
-            $processedLines[] = 'http://xxl2a.xyz:9527/hls/ok.m3u8';
+            $processedLines[] = 'http://www.xxl2a.xyz:5080/ok.mp4';
 
             // 添加到期时间条目
             $processedLines[] = '#EXTINF:-1 tvg-chno="1" tvg-id="" tvg-name="到期时间-' . $tokenId . " " . $expireTime . '" tvg-logo="http://www.xxl2a.xyz:5080/logo.png" group-title="蜂鸟传媒",到期时间 ' . $expireTime;
-            $processedLines[] = 'http://xxl2a.xyz:9527/hls/ok.m3u8';
+            $processedLines[] = 'http://www.xxl2a.xyz:5080/ok.mp4';
 
             $addedCustomEntries = true;
             $foundFengniaoExtinf = false;
