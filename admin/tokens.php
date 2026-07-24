@@ -52,9 +52,9 @@ require_once '../templates/header.php';
 <form method="GET" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
     <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
         <div>
-            <label for="search" style="display: block; margin-bottom: 5px; font-weight: bold;">搜索Token:</label>
-            <input type="text" id="search" name="search" value="<?php echo htmlspecialchars($search); ?>" 
-                   placeholder="输入Token进行搜索" 
+            <label for="search" style="display: block; margin-bottom: 5px; font-weight: bold;">搜索Token/备注:</label>
+            <input type="text" id="search" name="search" value="<?php echo htmlspecialchars($search); ?>"
+                   placeholder="输入Token或备注进行搜索"
                    style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 250px;">
         </div>
         <div>
@@ -86,7 +86,7 @@ require_once '../templates/header.php';
     <div style="margin-top: 10px; color: #666; font-size: 14px;">
         当前筛选条件:
         <?php if (!empty($search)): ?>
-            Token包含 "<strong><?php echo htmlspecialchars($search); ?></strong>"
+            Token或备注包含 "<strong><?php echo htmlspecialchars($search); ?></strong>"
         <?php endif; ?>
         <?php if (!empty($expire_filter)): ?>
             <?php if (!empty($search)): ?> + <?php endif; ?>

@@ -1,0 +1,36 @@
+FROM php:8.1-fpm-alpine3.14
+
+ENV TZ=Asia/Shanghai
+
+# 安装依赖
+RUN apk update && apk add --no-cache \
+    sqlite-dev \
+    bash \
+    nginx \
+    netcat-openbsd \
+    && docker-php-ext-install pdo pdo_mysql pdo_sqlite \
+    && docker-php-ext-enable pdo_mysql pdo_sqlite
+
+# nginx 配置
+COPY nginx.conf /etc/nginx/http.d/default.conf
+
+# 工作目录
+WORKDIR /var/www/html
+
+# 这里只创建目录，不复制代码
+RUN mkdir -p \
+    /var/www/html \
+    /var/www/html/data \
+    /var/log/nginx
+
+ENV DB_DRIVER=mysql
+
+EXPOSE 80
+
+COPY docker-entrypoint.dev.sh /usr/local/bin/docker-entrypoint.sh
+
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+CMD ["/bin/sh", "-c", "php-fpm -D && nginx -g 'daemon off;'"]

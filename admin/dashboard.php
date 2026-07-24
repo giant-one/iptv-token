@@ -24,11 +24,11 @@ $stmt = $db->prepare('SELECT COUNT(*) FROM logs WHERE access_time >= ?');
 $stmt->execute([$today_start]);
 $today_logs = $stmt->fetchColumn();
 
-// 获取最近的Token
-$recent_tokens = get_all_tokens(5);
+// 获取最近的Token（必须同时传 offset，否则 LIMIT 不生效会查全表）
+$recent_tokens = get_all_tokens(5, 0);
 
-// 获取最近的日志
-$recent_logs = get_logs(5);
+// 获取最近的日志（同上）
+$recent_logs = get_logs(5, 0);
 
 // 包含头部
 require_once '../templates/header.php';

@@ -50,6 +50,29 @@ try {
                 updated_at INTEGER
             );
         ";
+
+        // 开放平台接入方
+        $sqlApiApps = "
+            CREATE TABLE IF NOT EXISTS api_apps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                app_id TEXT UNIQUE NOT NULL,
+                app_secret TEXT NOT NULL,
+                name TEXT,
+                status INTEGER DEFAULT 1,
+                default_playlist_ids TEXT,
+                created_at INTEGER,
+                updated_at INTEGER
+            );
+        ";
+
+        // 开放平台防重放 nonce 记录
+        $sqlApiNonces = "
+            CREATE TABLE IF NOT EXISTS api_nonces (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nonce TEXT UNIQUE NOT NULL,
+                expire_at INTEGER
+            );
+        ";
     } else {
         $sqlTokens = "
             CREATE TABLE IF NOT EXISTS tokens (
@@ -96,11 +119,36 @@ try {
                 UNIQUE KEY unique_token_playlist (token_id, playlist_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         ";
+
+        // 开放平台接入方
+        $sqlApiApps = "
+            CREATE TABLE IF NOT EXISTS api_apps (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                app_id VARCHAR(64) UNIQUE NOT NULL,
+                app_secret VARCHAR(128) NOT NULL,
+                name VARCHAR(255),
+                status INT DEFAULT 1,
+                default_playlist_ids TEXT,
+                created_at BIGINT,
+                updated_at BIGINT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ";
+
+        // 开放平台防重放 nonce 记录
+        $sqlApiNonces = "
+            CREATE TABLE IF NOT EXISTS api_nonces (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                nonce VARCHAR(128) UNIQUE NOT NULL,
+                expire_at BIGINT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ";
     }
 
     $db->exec($sqlTokens);
     $db->exec($sqlLogs);
     $db->exec($sqlPlaylists);
+    $db->exec($sqlApiApps);
+    $db->exec($sqlApiNonces);
 
     if (DB_DRIVER === 'mysql') {
         $db->exec($sqlTokenPlaylists);

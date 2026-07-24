@@ -29,12 +29,12 @@ function get_all_tokens($limit = null, $offset = null, $search = null, $expire_f
     $where_conditions = [];
     $params = [];
     
-    // 搜索条件
+    // 搜索条件（同时匹配 token 和备注 note）
     if (!empty($search)) {
-        $where_conditions[] = 'token LIKE :search';
+        $where_conditions[] = '(token LIKE :search OR note LIKE :search)';
         $params[':search'] = '%' . $search . '%';
     }
-    
+
     // 到期时间筛选
     if (!empty($expire_filter)) {
         $now = time();
@@ -111,12 +111,12 @@ function get_tokens_count($search = null, $expire_filter = null, $status_filter 
     $where_conditions = [];
     $params = [];
     
-    // 搜索条件
+    // 搜索条件（同时匹配 token 和备注 note）
     if (!empty($search)) {
-        $where_conditions[] = 'token LIKE :search';
+        $where_conditions[] = '(token LIKE :search OR note LIKE :search)';
         $params[':search'] = '%' . $search . '%';
     }
-    
+
     // 到期时间筛选
     if (!empty($expire_filter)) {
         $now = time();
@@ -744,6 +744,138 @@ function delete_logs_by_token($token) {
     $stmt = $db->prepare('DELETE FROM logs WHERE token = :token');
     $stmt->bindValue(':token', $token);
     return $stmt->execute();
+}
+
+// ==================== 开放平台接入方 (api_apps) ====================
+
+// 生成接入方凭证 (app_id + app_secret)
+function generate_app_credentials() {
+    do {
+        $app_id = 'app_' . bin2hex(random_bytes(8)); // app_ + 16位hex
+    } while (get_app_by_app_id($app_id));
+
+    $app_secret = bin2hex(random_bytes(32)); // 64位hex
+    return ['app_id' => $app_id, 'app_secret' => $app_secret];
+}
+
+// 根据 app_id 获取接入方
+function get_app_by_app_id($app_id) {
+    $db = get_db_connection();
+    $stmt = $db->prepare('SELECT * FROM api_apps WHERE app_id = :app_id LIMIT 1');
+    $stmt->bindValue(':app_id', $app_id);
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// 获取所有接入方
+function get_all_api_apps() {
+    $db = get_db_connection();
+    $stmt = $db->query('SELECT * FROM api_apps ORDER BY created_at DESC');
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// 根据ID获取接入方
+function get_api_app_by_id($id) {
+    $db = get_db_connection();
+    $stmt = $db->prepare('SELECT * FROM api_apps WHERE id = :id');
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+// 创建接入方，返回含明文 app_secret 的凭证数组，失败返回 false
+function create_api_app($data) {
+    $db = get_db_connection();
+
+    $cred = generate_app_credentials();
+
+    $sql = 'INSERT INTO api_apps (app_id, app_secret, name, status, default_playlist_ids, created_at, updated_at)
+            VALUES (:app_id, :app_secret, :name, :status, :default_playlist_ids, :created_at, :updated_at)';
+    $stmt = $db->prepare($sql);
+    $now = time();
+
+    $stmt->bindValue(':app_id', $cred['app_id']);
+    $stmt->bindValue(':app_secret', $cred['app_secret']);
+    $stmt->bindValue(':name', $data['name'] ?? '');
+    $stmt->bindValue(':status', $data['status'] ?? 1, PDO::PARAM_INT);
+    $stmt->bindValue(':default_playlist_ids', $data['default_playlist_ids'] ?? null);
+    $stmt->bindValue(':created_at', $now, PDO::PARAM_INT);
+    $stmt->bindValue(':updated_at', $now, PDO::PARAM_INT);
+
+    if ($stmt->execute()) {
+        return $cred; // 仅此处返回明文 secret
+    }
+    return false;
+}
+
+// 更新接入方（名称、状态、默认播放列表白名单）
+function update_api_app($id, $data) {
+    $db = get_db_connection();
+
+    $sql = 'UPDATE api_apps SET
+            name = :name,
+            status = :status,
+            default_playlist_ids = :default_playlist_ids,
+            updated_at = :updated_at
+            WHERE id = :id';
+    $stmt = $db->prepare($sql);
+
+    $stmt->bindValue(':name', $data['name'] ?? '');
+    $stmt->bindValue(':status', $data['status'] ?? 1, PDO::PARAM_INT);
+    $stmt->bindValue(':default_playlist_ids', $data['default_playlist_ids'] ?? null);
+    $stmt->bindValue(':updated_at', time(), PDO::PARAM_INT);
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+
+    return $stmt->execute();
+}
+
+// 重置接入方 secret，返回新明文 secret，失败返回 false
+function reset_api_app_secret($id) {
+    $db = get_db_connection();
+    $new_secret = bin2hex(random_bytes(32));
+
+    $stmt = $db->prepare('UPDATE api_apps SET app_secret = :s, updated_at = :u WHERE id = :id');
+    $stmt->bindValue(':s', $new_secret);
+    $stmt->bindValue(':u', time(), PDO::PARAM_INT);
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+
+    return $stmt->execute() ? $new_secret : false;
+}
+
+// 删除接入方
+function delete_api_app($id) {
+    $db = get_db_connection();
+    $stmt = $db->prepare('DELETE FROM api_apps WHERE id = :id');
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+    return $stmt->execute();
+}
+
+// ==================== 开放平台防重放 (api_nonces) ====================
+
+// 校验并记录 nonce：首次出现返回 true 并写入；已存在返回 false（判定重放）
+// 顺带惰性清理已过期的 nonce 记录
+function check_and_store_nonce($nonce, $ttl = 300) {
+    $db = get_db_connection();
+    $now = time();
+
+    // 惰性清理过期记录
+    try {
+        $del = $db->prepare('DELETE FROM api_nonces WHERE expire_at < :now');
+        $del->bindValue(':now', $now, PDO::PARAM_INT);
+        $del->execute();
+    } catch (PDOException $e) {
+        // 清理失败不影响主流程
+    }
+
+    try {
+        $stmt = $db->prepare('INSERT INTO api_nonces (nonce, expire_at) VALUES (:nonce, :expire_at)');
+        $stmt->bindValue(':nonce', $nonce);
+        $stmt->bindValue(':expire_at', $now + $ttl, PDO::PARAM_INT);
+        return $stmt->execute();
+    } catch (PDOException $e) {
+        // 唯一约束冲突 => nonce 已用过 => 重放
+        return false;
+    }
 }
 
 
