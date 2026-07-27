@@ -26,6 +26,7 @@ try {
                 status INT DEFAULT 1,
                 note TEXT,
                 channel TEXT,
+                max_ip_per_day INT DEFAULT 0,
                 created_at INTEGER,
                 updated_at INTEGER
             );
@@ -37,7 +38,8 @@ try {
                 token TEXT,
                 ip TEXT,
                 channel TEXT,
-                access_time INTEGER
+                access_time INTEGER,
+                user_agent TEXT
             );
         ";
 
@@ -45,7 +47,7 @@ try {
             CREATE TABLE IF NOT EXISTS playlists (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                name_en TEXT NOT NULL,
+                url TEXT NOT NULL,
                 created_at INTEGER,
                 updated_at INTEGER
             );
@@ -84,6 +86,7 @@ try {
                 status INT DEFAULT 1,
                 note TEXT,
                 channel VARCHAR(255) DEFAULT NULL,
+                max_ip_per_day INT UNSIGNED DEFAULT 0,
                 created_at BIGINT,
                 updated_at BIGINT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
