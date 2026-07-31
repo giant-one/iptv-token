@@ -51,8 +51,7 @@ $params = [
     'timestamp'    => 1753142400,
     'nonce'        => 'a1b2c3d4e5',
     'expire_days'  => 30,
-    'playlist_ids' => [1, 2],
-    'max_ip_per_day' => 5,
+    'playlist_ids' => [2],
 ];
 
 // 数组值转紧凑 JSON
@@ -80,17 +79,17 @@ POST /open/create_token.php
 
 请求参数：
 
-| 参数 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `playlist_ids` | int[] | 是 | 授权的播放列表 ID 数组，非空 |
-| `expire_days` | int | 否 | 从现在起 N 天后过期 |
-| `expire_at` | int | 否 | 直接指定过期时间戳 |
+| 参数 | 类型 | 必填 | 说明                                          |
+| --- | --- | --- |---------------------------------------------|
+| `playlist_ids` | int[] | 是 | 授权的播放列表 ID 数组，非空，目前传4即可                     |
+| `expire_days` | int | 否 | 从现在起 N 天后过期                                 |
+| `expire_at` | int | 否 | 直接指定过期时间戳                                   |
 | `expire_date` | string | 否 | 过期日期，如 `2026-12-31` 或 `2026-12-31 23:59:59` |
-| `max_usage` | int | 否 | 最大使用次数，0=不限制（默认） |
-| `max_ip_per_day` | int | 否 | 每日最大 IP 数，不传默认 **4**，传 0 表示不限制 |
-| `note` | string | 否 | 备注 |
-| `channel` | string | 否 | 频道标识，默认 `open` |
-| `token` | string | 否 | 自定义 token 值，不传则自动生成 |
+| `max_usage` | int | 否 | 最大使用次数，0=不限制（默认）                            |
+| `max_ip_per_day` | int | 否 | 每日最大 IP 数，不传默认 **4**，传 0 表示不限制              |
+| `note` | string | 否 | 备注                                          |
+| `channel` | string | 否 | 频道标识，默认 `open`                              |
+| `token` | string | 否 | 自定义 token 值，不传则自动生成                         |
 
 > 有效期三选一，优先级 `expire_days` > `expire_at` > `expire_date`；都不传表示永不过期。
 > 若接入方配置了播放列表白名单，`playlist_ids` 必须全部在白名单内。
@@ -103,8 +102,7 @@ POST /open/create_token.php
   "timestamp": 1753142400,
   "nonce": "a1b2c3d4e5",
   "expire_days": 30,
-  "playlist_ids": [1, 2],
-  "max_ip_per_day": 5,
+  "playlist_ids": [4],
   "note": "某某客户",
   "sign": "..."
 }
@@ -150,7 +148,7 @@ curl -X POST "http://your-domain/open/create_token.php" \
     "timestamp": 1753142400,
     "nonce": "a1b2c3d4e5",
     "expire_days": 30,
-    "playlist_ids": [1, 2],
+    "playlist_ids": [4],
     "max_ip_per_day": 5,
     "sign": "算出的签名"
   }'
